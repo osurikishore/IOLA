@@ -1,0 +1,8 @@
+&share
+    datapath = <s:TEMPDROP_SONDE_DATAPATH>
+    debug = .false.
+    sonde_filelist = <s:SONDE_FILELIST>
+    write_hsa = .true.
+    write_hsa_drift = .true.
+    write_nc_skewt = .false.
+/

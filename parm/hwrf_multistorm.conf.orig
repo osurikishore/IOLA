@@ -1,0 +1,274 @@
+# This is a UNIX conf file that contains ALL information relating to
+# the HWRF basin scale multi storm configuration.  
+#
+# For information related to the syntax, refer to the file hwrf.conf
+
+
+# READ THIS:
+# THIS FILE WILL ONLY BE READ IF running a multistorm.
+# Remember to set run_multistorm in hwrf_basic.conf and MULTISTORM
+# in global vars if running the wrappers.
+
+# If running a multistorm, this file is the last in the chain of "conf" 
+# files that is read. So any settings in this file will override 
+# parameters in the same section with the same name. Parameters passed 
+# in at the command line will overide all parameters.
+# ====================================================================
+
+[prelaunch]
+# Disable per-basin config since multistorm requires GSI
+basin_overrides=no
+
+[fakeinit]
+# nothing needed here yet
+
+# This section is for variables used by the FinalMergeTask class.
+[finalmerge]
+# Nothing needed here yet
+# scrub=no      ; disable scrubing of finalmerge directory               
+
+[config]
+# This section sets basic configuration options used by all components.  
+# Several special variables in this section are set by the HWRFConfig 
+# object itself, which will overwrite them if they're set in this file.
+
+# If forecast_section is not set, then runwrf3km section in hwrf.conf
+# will be used and multistorm forecast will faile since nio_tasks_per_group 
+# will be set according to that section and is  only set for d01,d02,and d03. 
+forecast_section=runwrf
+
+# Domain 01 MOAD center Latitude and Longitude for the multistorm scale
+# # Setting these 
+domlat=25.0
+domlon=80.0
+# # Same as domlat and domlon but vitals formatted 
+vitalsdomlat=250N
+vitalsdomlon=800E
+
+# HWRF launcher requires vitals and a storm.
+# This is a default minimum vitals file for a fake storm.
+# The format of the missing value fields was based on the log
+# output returned when running the launcher after the vitals have 
+# been "cleaned" up. That is, if  you enter the fields as all -999 values, 
+# the "cleaned" output is returned. In essence I'm treating the vitals 
+# module as a factory in the sense that it knows the correct format.
+# NHC 00L FAKE 20120710 0000 250N 0800W -99 -99 -999 -999 -099 -9 -99 -999 -999 -999 -999 M
+# fakestormid is a config option set in the launcher and is the 
+# last storm id in the list of storms.
+fakestorm_vitals=NHC {fakestormid} FAKE {YMD} {HH}{min} {vitalsdomlat} {vitalsdomlon} -99 -99 -999 -999 -099 -9 -99 -999 -999 -999 -999 M
+
+# ---------------------------------------------------------------------
+# hwrf_basic.conf overrides
+# ---------------------------------------------------------------------
+
+# Currently ocean is not supported in multistorm.
+# So until it is, override the setting in hwrf_basic.conf.
+run_gsi=no
+run_ocean=yes         ; HYCOM/POM coupling
+run_wave=no
+run_ensemble_da=no
+extra_trackers=no
+
+make_gofile=yes  
+
+# ---------------------------------------------------------------------
+# system.conf overrides
+# ---------------------------------------------------------------------
+
+# This section is used only in the SHORT WRF forecast 
+[wrfexe]
+nio_groups=1
+nio_tasks_per_group=12,12,12
+poll_servers=yes
+nproc_x=-1
+nproc_y=-1
+
+# This section is used only in the FULL WRF forecast run.
+# ie. appears in runwrf/namelist.input file.
+[runwrf]
+nio_groups=2
+nio_tasks_per_group=8,8,8,8,8,8,8,8,8,8,8
+poll_servers=no
+
+# Set for max of 5 storms
+# For one storm, currently d01,d02,d03 must use the same
+# number of compute tasks for x and y else wrf exe forecast hangs.
+dm_task_split.comm_start=0,0,0,480,480,960,960,1440,1440,1920,1920
+
+# The variables "nest_pes_x" & "nest_pes_y"
+dm_task_split.nest_pes_x=16,16,16,16,16,16,16,16,16,16,16
+dm_task_split.nest_pes_y=30,30,30,30,30,30,30,30,30,30,30
+
+
+# -----------------------------------------------------------------------
+# WRF configuration. overrides
+# -----------------------------------------------------------------------
+# Setting specific the the multi storm basin scale.
+# Refer to hwrf.conf for comments releated to this section.
+
+
+# moad changes for the multi storm basin scale.
+# Refer to the [moad] seciton in hwrf.conf for comments
+# related to the moad domain.
+[moad]
+# 3km multistorm
+# nx = 598
+# ny = 632
+nx = 720
+ny = 624
+dx = 0.135            ;; X resolution, must be a multiple of 0.09 and same as dy
+dy = 0.135            ;; Y resolution, must be a multiple of 0.09 and same as dx
+
+
+#####################################################
+#####################################################
+## Domain initial location decision method
+##
+## How to decide the domain initial location:
+##  - auto --- use hwrf_swcorner_dynamic.  Only immediate children of the MOAD can do this.
+##  - centered --- center on the parent domain
+##  - fixed --- specify a location using istart= and jstart= options
+## If auto or centered are selected, the istart and jstart options are ignored.
+
+[storm1outer]
+nx = 236                  ;; Domain X (rotated East) extent
+ny = 472                  ;; Domain Y (rotated North) extent
+parent_grid_ratio = 3     ;; Parent-nest resolution ratio.  Must be 3
+start = auto
+istart = 99
+jstart = 201
+namelist = namelist_outer ;; Namelist for setting per-domain options for this domain.
+
+[storm1inner]
+nx = 236                  ;; Domain X (rotated East) extent
+ny = 472                  ;; Domain Y (rotated North) extent
+parent_grid_ratio = 3     ;; Parent-nest resolution ratio.  Must be 3
+start = centered
+istart = 96
+jstart = 193
+namelist = namelist_inner ;; Namelist for setting per-domain options for this domain.
+
+[storm1ghost]
+
+[storm1ghost_parent]
+nx = 316                 ;; Domain X (rotated East) extent
+ny = 630                 ;; Domain Y (rotated North) extent
+parent_grid_ratio = 3    ;; Parent-nest resolution ratio.  Must be 3
+start = auto
+
+[storm1ghost_big]
+
+[storm1ghost_parent_big]
+
+[namelist_ghost]
+nx = 500                  ;; Domain X (rotated East) extent
+ny = 1000                 ;; Domain Y (rotated North) extent
+start = centered
+istart = 105
+jstart = 211
+
+# Required by hwrf initialization. 
+# This must  be the maximum number of storms that hwrf will run, Current list is 5.
+# You must add  more storms if you want to run more storms.
+
+[namelist_outer]
+physics.vortex_tracker=2
+
+[storm2outer]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = auto
+istart = 99
+jstart = 201
+namelist = namelist_outer
+
+[storm2inner]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = centered
+istart = 96
+jstart = 193
+namelist = namelist_inner
+
+[storm3outer]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = auto
+istart = 99
+jstart = 201
+namelist = namelist_outer
+
+[storm3inner]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = centered
+istart = 96
+jstart = 193
+namelist = namelist_inner
+
+[storm4outer]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = auto
+istart = 99
+jstart = 201
+namelist = namelist_outer
+
+[storm4inner]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = centered
+istart = 96
+jstart = 193
+namelist = namelist_inner
+
+[storm5outer]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = auto
+istart = 99
+jstart = 201
+namelist = namelist_outer
+
+[storm5inner]
+nx = 236
+ny = 472
+parent_grid_ratio = 3
+start = centered
+istart = 96
+jstart = 193
+namelist = namelist_inner
+
+# For one storm, currently d01,d02,d03 must use the same
+# number of compute tasks for x and y else wrf exe forecast hangs.
+[wrf_1storm]
+nest_pes_x = 16,16,16,16,16,16,16,16,16,16,16
+nest_pes_y = 30,30,30,30,30,30,30,30,30,30,30
+
+[wrf_2storm]
+nest_pes_x = 16,16,16,16,16,16,16,16,16,16,16
+nest_pes_y = 60,30,30,30,30,30,30,30,30,30,30
+
+[wrf_3storm]
+nest_pes_x = 16,16,16,16,16,16,16,16,16,16,16
+nest_pes_y = 90,30,30,30,30,30,30,30,30,30,30
+
+[wrf_4storm]
+nest_pes_x = 16,16,16,16,16,16,16,16,16,16,16
+nest_pes_y = 120,30,30,30,30,30,30,30,30,30,30
+
+[wrf_5storm]
+nest_pes_x = 16,16,16,16,16,16,16,16,16,16,16
+nest_pes_y = 150,30,30,30,30,30,30,30,30,30,30
+
+[forecast_products]
+# synop_grid = 0.1,0.1,160.,280.,136,2801,1601 DO NOT USE THIS LINE, it did not work for olaf 19e 2015102106
+synop_grid = 0.125,0.125,90.,210.,128,1681,721      ;; stationary 90x210 deg grid --> Changed from 110-deg to 210-deg for Basin-Scale HWRF (GJA, 2017-08-03)
+trkd3_grid = 0.02,0.02,12.,12.,128,601,601         ;; moving 12x12 0.02 deg grid for tracker

@@ -1,0 +1,210 @@
+#!/bin/bash
+
+# Stop on errors
+set -e
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $hycom_init
+# ==========================================
+# CONFIGURATION
+# ==========================================
+CYCLE="${cycle}"  # Default example YYYYMMDD
+MODE="SPIN" # or "FORECAST"
+GFS_PATH="${input_data_path}/gfs"
+WGRIB2="${wgrib2}"
+GRB2INDEX="${iola_repo_path}/sorc/hwrf-utilities/exec/grb2index.exe"
+GFS2OFS2="${iola_repo_path}/sorc/hycom/exec/hwrf_gfs2ofs2"
+
+# ==========================================
+
+# Extract Date Components
+yyyy=${CYCLE:0:4}
+mm=${CYCLE:4:2}
+dd=${CYCLE:6:2}
+hh=${CYCLE:8:2}
+
+# Convert cycle date to epoch seconds (UTC)
+cycle_epoch=$(date -u -d "${yyyy}-${mm}-${dd} ${hh}:00" +%s)
+
+# For creating limits file
+PRIOR24=$(date -u -d "${yyyy}-${mm}-${dd} 00:00 24 hours ago" +%Y%m%d)
+
+date_normal2hycom () {
+    local normal="$1"
+    local datestr
+
+    # Detect YYYYMMDDHH format
+    if [[ "$normal" =~ ^[0-9]{10}$ ]]; then
+        yyyy=${normal:0:4}
+        mm=${normal:4:2}
+        dd=${normal:6:2}
+        hh=${normal:8:2}
+        datestr="${yyyy}-${mm}-${dd} ${hh}:00:00"
+    else
+        datestr="$normal"
+    fi
+
+    # Convert input date to seconds since Unix epoch (UTC)
+    normal_sec=$(date -u -d "$datestr" +%s 2>/dev/null)
+    if [[ -z "$normal_sec" ]]; then
+        echo "ERROR: Invalid date format: $normal" >&2
+        return 1
+    fi
+
+    # HYCOM epoch: 1900-12-31 00:00:00 UTC
+    hycom_epoch_sec=$(date -u -d "1900-12-31 00:00:00" +%s)
+
+    # Difference in seconds → fractional days
+    awk -v n="$normal_sec" -v h="$hycom_epoch_sec" \
+        'BEGIN { printf "%.6f\n", (n - h) / 86400.0 }'
+}
+
+if [[ "$MODE" == "SPIN" ]]; then
+    #Create limits file
+    spinstart_hycom=$(date_normal2hycom "$PRIOR24")
+    cycle_hycom=$(date_normal2hycom "$CYCLE")
+
+    printf "  %s %s false false  \n" \
+        "$spinstart_hycom" "$cycle_hycom" > limits
+
+    # Initialize listflx.dat with an empty line (placeholder for count)
+    echo "" > listflx.dat
+    count=0
+
+    # start_date = CYCLE - 27 hours
+    start_epoch=$(( cycle_epoch - 27*3600 ))
+
+    # Loop from 0 to 30 in steps of 3
+    for ihour in $(seq 0 3 30); do
+        date_epoch=$(( start_epoch + ihour*3600 ))
+        
+        # Get hour of the current step
+        date_hour=$(date -u -d "@$date_epoch" +%H)
+        
+        # Logic to determine Analysis time (Parent GFS run) and Forecast hour
+        # If hour is 00, 06, 12, 18 -> It matches a cycle, so f_hour=6 (from previous cycle)
+        if (( 10#$date_hour % 6 == 0 )); then
+            anal_epoch=$(( date_epoch - 6*3600 ))
+            f_hour=6
+        else
+            anal_epoch=$(( date_epoch - 3*3600 ))
+            f_hour=3
+        fi
+
+        anal_hour=$(date -u -d "@$anal_epoch" +%H)
+        anal_date=$(date -u -d "@$anal_epoch" +%Y%m%d%H)
+        curr_date=$(date -u -d "@$date_epoch" +%Y%m%d%H)
+        
+        # Format f_hour to 3 digits (e.g., 003, 006)
+        f_hour_str=$(printf "%03d" $f_hour)
+
+        # Output names
+        base="${curr_date}.sfcflx"
+        in2="${base}.in2"
+        in3="${base}.in3"
+        in4="${base}.in4"
+        
+        # Remove old file
+        rm -f ${base}
+        
+        # Construct Source GFS Path
+        SOURCE_GFS="${GFS_PATH}/gfs.${anal_date}/gfs.t${anal_hour}z.pgrb2.0p25.f${f_hour_str}"
+        
+        # Link GFS file
+        echo "Linking: $SOURCE_GFS -> $in2"
+        ln -sf "$SOURCE_GFS" "$in2"
+        
+        # --- REPLACED SECTION START ---
+        inv_content=$($WGRIB2 "$in2")
+        reindex=""
+        criteria=(
+            "UFLX|surface|ave"
+            "VFLX|surface|ave"
+            "TMP|2 m above ground|fcst"
+            "SPFH|2 m above ground|fcst"
+            "PRATE|surface|ave"
+            "UGRD|10 m above ground|fcst"
+            "VGRD|10 m above ground|fcst"
+            "SHTFL|surface|ave"
+            "LHTFL|surface|ave"
+            "DLWRF|surface|ave"
+            "ULWRF|surface|ave"
+            "DSWRF|surface|ave"
+            "USWRF|surface|ave"
+            "TMP|surface|fcst"
+            "PRES|surface|fcst"
+            "LAND|surface|fcst"
+            "PRMSL|sea level|fcst"
+        )
+
+        for crit in "${criteria[@]}"; do
+            IFS='|' read -r var lev typ <<< "$crit"
+            matches=$(echo "$inv_content" | awk -v v="$var" -v l="$lev" -v t="$typ" 'index($0, v) && index($0, l) && index($0, t)')
+            if [ -n "$matches" ]; then
+                reindex="${reindex}${matches}"$'\n'
+            fi
+        done
+        
+        printf "%s" "$reindex" | $WGRIB2 "$in2" -i -grib "$in3"
+        
+        # Step 2: Regrid to gaussian -> .in4
+        $WGRIB2 "$in3" \
+            -new_grid_winds earth \
+            -new_grid gaussian "0:1440:0.25" "89.75:720" "$in4"
+        
+        cp "$in4" "$base"
+        
+        # Step 3: Get idx
+        $GRB2INDEX "$base" "${base}.idx"
+        
+        # Append info to listflx.dat
+        # Format: curr_date base 'none' path_to_original_gfs
+        printf "%s %s none %s none\n" "$curr_date" "$base" "$SOURCE_GFS" >> listflx.dat
+        
+        # Increase counter
+        count=$((count + 1))
+    done
+    
+    # Add the final counter at the top of listflx.dat
+    # Using sed to replace the first empty line with the count
+    sed -i "1s/^$/$count/" listflx.dat
+fi
+
+# Create ntp_pars.dat
+cat > intp_pars.dat << EOF
+
+&intp_pars
+avstep = 3.,      ! averaging fluxes (in hours)
+mrffreq = 3.,     ! frequency of MRF fluxes (in hours)  = mrffreq for no averaging
+flxflg = 15,      ! Type of HYCOM input (=4 => nhycom=7 and =5 => nhycom=8)
+dbgn = 0,         ! debugging =0 - no dbg; =1,2,3 - add output
+avg3 = 2,         ! if avg3 = 1, then averaged fluxes are converted to instantaneous fields
+wslocal = 0       ! if  wslocal = 1, then wind stress are computed from wind velcoities
+/
+EOF
+
+# Create jpdt_table.dat
+echo "8 8 0 0 8 0 0 0 0 8 8 8 8 0 0 0" > jpdt_table.dat
+
+# Loop from 1 to 10 for gfs2ofs processing
+for i in {1..10}; do
+    in_file="gfs2ofs.${i}.in"
+    out_file="gfs2ofs.${i}.out"
+    
+    # Create the input file containing just the index number
+    echo "$i" > "$in_file"
+    
+    echo "Processing $in_file -> $out_file"
+    # Run the executable, piping in the input file
+    cat "$in_file" | $GFS2OFS2 > "$out_file"
+done
+
+# Cleanup
+mkdir -p temp
+mv forcing.* temp/

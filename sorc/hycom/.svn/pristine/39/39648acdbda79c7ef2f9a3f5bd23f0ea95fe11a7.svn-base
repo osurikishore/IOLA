@@ -1,0 +1,30 @@
+#!/bin/csh -f
+
+set TOUCH = ORIG
+if ( ! -e configure.hycom ) then
+	touch configure.hycom
+	set TOUCH = TOUCH
+endif
+
+set nonomatch
+
+(make -i clean )
+
+
+
+if ( "$1" == '-a' ) then
+	( make -i cleanall >& /dev/null )
+	if ( -e configure.hycom ) then
+		/bin/cp configure.hycom configure.hycom.backup
+		/bin/rm -f configure.hycom
+	endif
+#	The nuclear option
+	find . -name \*.exe -exec \rm {} \; 
+	find . -name \*.o -exec \rm {} \; 
+	find . -name \*.a -exec \rm {} \; 
+	find . -name \*.mod -exec \rm {} \; 
+endif
+
+if ( ( $TOUCH == TOUCH ) && ( -e configure.hycom ) ) then
+	/bin/rm -f configure.hycom
+endif

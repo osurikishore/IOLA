@@ -1,0 +1,113 @@
+
+#####################################################################
+###  Set utilities and flags:  					  ###
+#####################################################################
+#
+AR=ar
+CPP=/usr/lib/cpp -P 
+FC=ncepxlf95
+LD=ncepxlf95
+ARFLAGS=-rv
+CPPFLAGS=-DAIX -DREAL4
+FFLAGS=-O -qarch=auto -qfixed=72 -g # -03
+F90FLAGS=-qsuffix=f=f90:cpp=F90 -qfree=f90 -O -qarch=auto -g # -03
+FCFLAGS= -c -qfixed -qstrict -qspillsize=32000 -qwarn64 
+LDFLAGS=-O3 -qarch=auto
+LIBS=
+#
+BINDIR= ../../exec
+SRC_F90 = timeinterp_forcing.f90
+#
+#
+SRC_HYCOM = mod_xc.F mod_za.F zh.F wtime.F 
+#
+#
+SRC_F = get_abfld1.f
+
+SRC =  ${SRC_F90} ${SRC_HYCOM} ${SRC_f}
+#
+
+#
+OBJS_F90 = ${SRC_F90:.f90=.o}
+OBJS_F = ${SRC_F:.f=.o}
+MODS_HYCOM=${SRC_HYCOM:.F=.o}
+MODS_OBJ=${SRC_MODS:.f90=.o}
+OBJS = ${OBJS_F90} ${OBJS_F} ${MODS_OBJ}
+MODS = ${MODS_HYCOM} 
+#
+#####################################################################
+###  Programs to be compiled by this makefile:			  ###
+#####################################################################
+#
+install:: clean modhycom ofs_timeinterp_forcing finish
+#
+####################################################################
+###  Compilation instructions for main programs:		  ###
+#####################################################################
+#
+ ofs_timeinterp_forcing: ${OBJS}
+	${LD} ${LDFLAGS} -o   ofs_timeinterp_forcing ${OBJS} ${MODS_HYCOM} $(LIBS) 
+#
+#
+modhycom: ${SRC_HYCOM}
+	${FC} ${FCFLAGS} ${SRC_HYCOM} -WF,${CPPFLAGS} 
+#
+clean:
+	-rm ${OBJS} ${MODS_HYCOM} *.x *.mod *.F.f ofs_timeinterp_forcing
+        
+finish:
+	-rm ${OBJS} ${MODS_HYCOM} *.mod 
+
+moveexe:
+	-mv ofs_timeinterp_forcing ${BINDIR}
+
+#
+makedep:
+	makedepend -f make.timeinterp_forcing ${SRC}
+
+#
+########################
+.SUFFIXES:
+.SUFFIXES: .o .f .l .sh .h  .F .F90 .f90
+#
+#SINGLE SUFFIX RULES
+#
+.f:
+	$(FC) $(FCFLAGS)  $< -o $@
+.F:
+	$(CPP) $(CPPFLAGS) -P $< > $*.f
+	$(FC) $(FCFLAGS) $*.f -o $*
+	-rm -f $*.f
+.f90:
+	$(FC) $(F90FLAGS)  $< -o $@
+.F90:
+	$(CPP) $(CPPFLAGS) -P $< > $*.f90
+	$(FC) $(F90FLAGS) $*.f90 -o $*
+#	-rm -f $*.f90
+.sh:
+	cp $< $@; chmod a+x $@
+#
+#DOUBLE SUFFIX RULES
+#
+.F.f:
+	$(CPP) $(CPPFLAGS) -P $< > $*.f
+	$(FC) $(FCFLAGS) -c $*.f
+.F.o:
+	$(CPP) $(CPPFLAGS) -P $< > $*.f
+	$(FC) $(FCFLAGS)  -c  $*.f 
+	-rm -f $*.f
+.f90.o:
+	$(FC) $(F90FLAGS)  -c  $*.f90 
+.F90.f90:
+	$(CPP) $(CPPFLAGS) -P $< > $*.f90
+	$(FC) $(F90FLAGS) -c $*.f90
+.F90.o:
+	$(CPP) $(CPPFLAGS) -P $< > $*.f90
+	$(FC) $(F90FLAGS)  -c  $*.f90 
+#	-rm -f $*.f90
+.f90.a:
+	$(FC) -c $(F90FLAGS) $<
+	$(AR) $(ARFLAGS) $@ $*.o
+	rm -f $*.o
+#
+# DO NOT DELETE THIS LINE - make depend depends on it.

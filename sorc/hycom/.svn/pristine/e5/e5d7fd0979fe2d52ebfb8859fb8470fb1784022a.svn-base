@@ -1,0 +1,14 @@
+PATH_TO_NWJET=../../nwjet
+include ../../nwjet/sorc/config/configure.hwrf
+
+OBJS	= fwind.o
+EXEC	= hwrf_ofs_fwind
+
+$(EXEC):	$(OBJS)
+	$(SFC) $(LDFLAGS) -o $@ $(OBJS)
+
+.PHONY: clean
+
+clean:
+	$(RM) $(OBJS) $(EXEC)
+

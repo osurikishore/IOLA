@@ -1,0 +1,33 @@
+To fix this, check that the processor layouts in parm/hwrf_multistorm.conf and rocoto/ms_forecast_procs.ent match
+
+1) In parm/hwrf_multistorm.conf:
+Set the following so there are enough IO processors to support the big D01 and multiple nests:
+[runwrf]
+nio_groups=2
+nio_tasks_per_group=8,8,8,8,8,8,8,8,8,8,8
+
+2) In rocoto/ms_forecast_procs.ent:
+For a 2 storm case on Hera, the entities (variables) "CPL_FCST_2_2KM_0IO_40PPN" and "CPL_TASKS_2_2KM_0IO_40PPN" are likely referenced (assuming ocean coupling). I think this is where WRF is finding 960+80. I would change the following:
+<!ENTITY CPL_FCST_2_2KM_0IO_40PPN        "1:ppn=4+1:ppn=20+12:ppn=40+10:ppn=8">
+<!ENTITY CPL_TASKS_2_2KM_0IO_40PPN       "584">
+
+3) Then, make sure the requested sites file (under ./rocoto/sites/, referenced in the bash cron script) is referencing the correct entities.
+
+
+
+dm_task_split.comm_start=0,0,0,960,960,1920,1920,2880,2880,3840,3840            ;; Hera 40x24
+dm_task_split.nest_pes_x=40,40,40,40,40,40,40,40,40,40,40
+dm_task_split.nest_pes_y=24,24,24,24,24,24,24,24,24,24,24
+
+[wrf_2storm]
+nest_pes_x = 40,40,40,40,40,40,40,40,40,40,40
+nest_pes_y = 48,24,24,24,24,24,24,24,24,24,24
+
+
+dm_task_split.comm_start=0,0,0,480,480,960,960,1440,1440,1920,1920
+dm_task_split.nest_pes_x=16,16,16,16,16,16,16,16,16,16,16
+dm_task_split.nest_pes_y=30,30,30,30,30,30,30,30,30,30,30
+
+[wrf_2storm]
+nest_pes_x = 16,16,16,16,16,16,16,16,16,16,16
+nest_pes_y = 60,30,30,30,30,30,30,30,30,30,30

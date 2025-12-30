@@ -1,0 +1,374 @@
+#!/bin/bash
+
+# Stop on errors
+set -e
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $hycom_init
+# ==========================================
+# CONFIGURATION
+# ==========================================
+CYCLE="${cycle}"
+FCST_HR=${forecast_length} # In hours
+MODE="FORECAST" # or "FORECAST"
+WORK_DIR="$(pwd)"
+SCRUB_DIR="${coupled_run_path}"
+PREFIX=$CYCLE
+FIX_PATH="${fix_path}"
+GFS_PATH="${input_data_path}/gfs"
+WGRIB2="${wgrib2}"
+GRB2INDEX="${iola_repo_path}/sorc/hwrf-utilities/exec/grb2index.exe"
+GFS2OFS2="${iola_repo_path}/sorc/hycom/exec/hwrf_gfs2ofs2"
+EXEC_PATH="${iola_repo_path}/sorc/hycom/exec/./iola_ofs_timeinterp_forcing"
+
+yyyy=${CYCLE:0:4}
+mm=${CYCLE:4:2}
+dd=${CYCLE:6:2}
+hh=${CYCLE:8:2}
+
+# Convert cycle date to epoch seconds (UTC)
+cycle_epoch=$(date -u -d "${yyyy}-${mm}-${dd} ${hh}:00" +%s)
+
+# For creating limits file
+PRIOR03=$(date -u -d "${yyyy}-${mm}-${dd} ${hh}:00 3 hours ago" +%Y%m%d)
+FCST_DATE=$(date -u -d "${yyyy}-${mm}-${dd} ${hh}:00 ${FCST_HR} hours" +%Y%m%d)
+
+date_normal2hycom () {
+    local normal="$1"
+    local datestr
+
+    # Detect YYYYMMDDHH format
+    if [[ "$normal" =~ ^[0-9]{10}$ ]]; then
+        yyyy=${normal:0:4}
+        mm=${normal:4:2}
+        dd=${normal:6:2}
+        hh=${normal:8:2}
+        datestr="${yyyy}-${mm}-${dd} ${hh}:00:00"
+    else
+        datestr="$normal"
+    fi
+
+    # Convert input date to seconds since Unix epoch (UTC)
+    normal_sec=$(date -u -d "$datestr" +%s 2>/dev/null)
+    if [[ -z "$normal_sec" ]]; then
+        echo "ERROR: Invalid date format: $normal" >&2
+        return 1
+    fi
+
+    # HYCOM epoch: 1900-12-31 00:00:00 UTC
+    hycom_epoch_sec=$(date -u -d "1900-12-31 00:00:00" +%s)
+
+    # Difference in seconds → fractional days
+    awk -v n="$normal_sec" -v h="$hycom_epoch_sec" \
+        'BEGIN { printf "%.6f\n", (n - h) / 86400.0 }'
+}
+
+if [[ "$MODE" == "FORECAST" ]]; then
+    
+    mkdir -p "$SCRUB_DIR"
+
+    # hwrf_basin files
+    cp -f hwrf_basin.*.a "${SCRUB_DIR}"
+    cp -f hwrf_basin.*.b "${SCRUB_DIR}"
+
+    # restart files
+    cp -f restart_outR.b "${SCRUB_DIR}/spin_restart.b"
+    cp -f restart_out.b  "${SCRUB_DIR}/restart_in.b"
+    cp -f restart_out.a  "${SCRUB_DIR}/restart_in.a"
+    cp -f restart_outR.a "${SCRUB_DIR}/spin_restart.a"
+
+    doy=$(awk 'NR==1 {printf "%d", $NF}' ovrtn_out)
+    year=$(awk 'NR==1 {print $(NF-1)+1901}' ovrtn_out)
+
+    # archive files
+    cp -f "archv.${year}_${doy}_00.a" "${SCRUB_DIR}/spin_archv.a"
+    cp -f "archv.${year}_${doy}_00.b" "${SCRUB_DIR}/spin_archv.b"
+    
+    # mask files
+    cp -f ismus_msk* ${SCRUB_DIR}/
+    cd ${SCRUB_DIR}
+
+    #Create limits file
+    spinstart_hycom=$(date_normal2hycom "$CYCLE")
+    fcst_hycom=$(date_normal2hycom "$FCST_DATE")
+
+    printf "  %s %s false false  \n" \
+        "$spinstart_hycom" "$fcst_hycom" > limits
+
+    # Initialize listflx.dat with an empty line (placeholder for count)
+    echo "" > listflx.dat
+    count=0
+
+    # start_date = CYCLE - 3 hours
+    start_epoch=$(( cycle_epoch - 3*3600 ))
+
+    # Loop from 0 to fcst_hr in steps of 3
+    for ihour in $(seq 0 3 $((FCST_HR+3))); do
+        date_epoch=$(( start_epoch + ihour*3600 ))
+        curr_date=$(date -u -d "@$date_epoch" +%Y%m%d%H)
+        
+        # Get hour of the current step
+        date_hour=$(date -u -d "@$date_epoch" +%H)
+        
+        # Logic to determine Analysis time (Parent GFS run) and Forecast hour
+        if  [[ "$ihour" -le 3 ]]; then
+            if (( 10#$date_hour % 6 == 0 )); then
+                anal_epoch=$(( date_epoch - 6*3600 ))
+                f_hour=6
+            else
+                anal_epoch=$(( date_epoch - 3*3600 ))
+                f_hour=3
+            fi
+            
+            anal_hour=$(date -u -d "@$anal_epoch" +%H)
+            anal_date=$(date -u -d "@$anal_epoch" +%Y%m%d%H)
+        else
+            anal_hour=$hh
+            anal_date=$CYCLE
+	    f_hour=$((ihour-3))
+        fi
+        
+        # Format f_hour to 3 digits (e.g., 003, 006)
+        f_hour_str=$(printf "%03d" $f_hour)
+
+        # Output names
+        base="${curr_date}.sfcflx"
+        in2="${base}.in2"
+        in3="${base}.in3"
+        in4="${base}.in4"
+        
+        # Remove old file
+        #rm -f ${base}
+        
+        # Construct Source GFS Path
+        SOURCE_GFS="${GFS_PATH}/gfs.${anal_date}/gfs.t${anal_hour}z.pgrb2.0p25.f${f_hour_str}"
+        
+        # Link GFS file
+        echo "Linking: $SOURCE_GFS -> $in2"
+        ln -sf "$SOURCE_GFS" "$in2"
+        
+        # --- REPLACED SECTION START ---
+        inv_content=$($WGRIB2 "$in2")
+        reindex=""
+        criteria=(
+            "UFLX|surface|ave"
+            "VFLX|surface|ave"
+            "TMP|2 m above ground|fcst"
+            "SPFH|2 m above ground|fcst"
+            "PRATE|surface|ave"
+            "UGRD|10 m above ground|fcst"
+            "VGRD|10 m above ground|fcst"
+            "SHTFL|surface|ave"
+            "LHTFL|surface|ave"
+            "DLWRF|surface|ave"
+            "ULWRF|surface|ave"
+            "DSWRF|surface|ave"
+            "USWRF|surface|ave"
+            "TMP|surface|fcst"
+            "PRES|surface|fcst"
+            "LAND|surface|fcst"
+            "PRMSL|sea level|fcst"
+        )
+
+        for crit in "${criteria[@]}"; do
+            IFS='|' read -r var lev typ <<< "$crit"
+            matches=$(echo "$inv_content" | awk -v v="$var" -v l="$lev" -v t="$typ" 'index($0, v) && index($0, l) && index($0, t)')
+            if [ -n "$matches" ]; then
+                reindex="${reindex}${matches}"$'\n'
+            fi
+        done
+        
+        printf "%s" "$reindex" | $WGRIB2 "$in2" -i -grib "$in3"
+        
+        # Step 2: Regrid to gaussian -> .in4
+        $WGRIB2 "$in3" \
+            -new_grid_winds earth \
+            -new_grid gaussian "0:1440:0.25" "89.75:720" "$in4"
+        
+        cp "$in4" "$base"
+        
+        # Step 3: Get idx
+        $GRB2INDEX "$base" "${base}.idx"
+        
+        # Append info to listflx.dat
+        # Format: curr_date base 'none' path_to_original_gfs
+        printf "%s %s none %s none\n" "$curr_date" "$base" "$SOURCE_GFS" >> listflx.dat
+        
+        # Increase counter
+        count=$((count + 1))
+    done
+    
+    # Add the final counter at the top of listflx.dat
+    # Using sed to replace the first empty line with the count
+    sed -i "1s/^$/$count/" listflx.dat
+fi
+
+# Create ntp_pars.dat
+cat > intp_pars.dat << EOF
+
+&intp_pars
+avstep = 3.,      ! averaging fluxes (in hours)
+mrffreq = 3.,     ! frequency of MRF fluxes (in hours)  = mrffreq for no averaging
+flxflg = 15,      ! Type of HYCOM input (=4 => nhycom=7 and =5 => nhycom=8)
+dbgn = 0,         ! debugging =0 - no dbg; =1,2,3 - add output
+avg3 = 2,         ! if avg3 = 1, then averaged fluxes are converted to instantaneous fields
+wslocal = 0       ! if  wslocal = 1, then wind stress are computed from wind velcoities
+/
+EOF
+
+# Create jpdt_table.dat
+echo "8 8 0 0 8 0 0 0 0 8 8 8 8 0 0 0" > jpdt_table.dat
+
+# ==========================================
+# SYMBOLIC LINKS setup
+# ==========================================
+ln -sf $WORK_DIR/regional.* .
+
+#Remove existing forcing files
+rm -rf forcing.*
+
+# Loop from 1 to 10 for gfs2ofs processing
+for i in {1..10}; do
+    in_file="gfs2ofs.${i}.in"
+    out_file="gfs2ofs.${i}.out"
+    
+    # Create the input file containing just the index number
+    echo "$i" > "$in_file"
+    
+    echo "Processing $in_file -> $out_file"
+    # Run the executable, piping in the input file
+    cat "$in_file" | $GFS2OFS2 > "$out_file"
+done
+
+mkdir -p temp
+mv forcing.* temp
+
+############################################################################
+#    hwrf_ofs_timeinterp_forcing
+###########################################################################
+
+# Create timestep forcing input files
+declare -A firstvar=(
+    [airtmp]="precip"
+    [precip]="airtmp"
+    [presur]="precip"
+    [radflx]="airtmp"
+    [shwflx]="airtmp"
+    [surtmp]="precip"
+    [tauewd]="airtmp"
+    [taunwd]="airtmp"
+    [vapmix]="precip"
+    [wndspd]="precip"
+)
+
+num=$(head -n 1 listflx.dat)
+
+# Loop through all forcing variable names
+for var in "${!firstvar[@]}"; do
+    file="timeinterp_forcing.${var}.in"
+    fv="${firstvar[$var]}"
+
+    cat << EOF > "$file"
+$fv
+5
+$num
+$var
+5
+$num
+   $var:
+EOF
+
+    echo "Created $file"
+done
+
+# Check if there are any files matching the pattern
+if ls timeinterp_forcing.*.in >/dev/null 2>&1; then
+  # Loop through each file matching timeinterp_forcing.*.in
+  for file in timeinterp_forcing.*.in; do
+    echo "Processing $file..."
+    cat "$file" | $EXEC_PATH
+    if [ $? -eq 0 ]; then
+      echo "$file processed successfully."
+    else
+      echo "Error processing $file."
+    fi
+  done
+else
+  echo "No files matching timeinterp_forcing.*.in found."
+  exit 1
+fi
+
+# ============================================
+# Base directories
+export PARM=${iola_repo_path}/parm/hycom
+export FIX=$FIX_PATH/hwrf-hycom
+export EXEC=${iola_repo_path}/sorc/hycom/exec
+export SRC=${iola_repo_path}/sorc/hycom/exec
+export OUT=${SCRUB_DIR}
+
+cp -rf "$PARM/hwrf_rtofs_hin40.basin.fcst.blkdat.input" "$OUT/blkdat.input"
+cp -rf "$PARM/hwrf_rtofs_hin40.basin.ports.input" "$OUT/ports.input"
+cp -rf "$PARM/hwrf_rtofs_hin40.basin.patch.input.90" "$OUT/patch.input"
+
+# Work in hycominit directory
+cd "$OUT"
+mkdir -p nest
+
+# HYCOM epoch
+HYCOM_EPOCH="1900-12-31 00:00:00"
+
+for bfile in hwrf_basin.*.b; do
+    echo "Processing $bfile"
+    hycomdate=$(sed -n '11p' "$bfile" | awk -F= '{print $2}' | awk '{print $2}')
+    if [[ -z "$hycomdate" ]]; then
+        echo "ERROR: Could not extract hycomdate from $bfile"
+        continue
+    fi
+    seconds=$(awk "BEGIN {printf \"%d\", $hycomdate * 86400}")
+    normaldate=$(date -u -d "$HYCOM_EPOCH $seconds seconds" "+%Y %j %H")
+    yyyy=$(echo "$normaldate" | awk '{print $1}')
+    jjj=$(echo "$normaldate"  | awk '{print $2}')
+    hh=$(echo "$normaldate"   | awk '{print $3}')
+    nestafile="nest/archv.${yyyy}_${jjj}_${hh}.a"
+    nestbfile="nest/archv.${yyyy}_${jjj}_${hh}.b"
+    afile="${bfile%.b}.a"
+
+    ln -sf "$OUT/$afile" "$nestafile"
+    ln -sf "$OUT/$bfile" "$nestbfile"
+done
+
+# Link relax.rmu files
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.rmu.b nest/rmu.b
+
+# Create symbolic links to forcing and fix files
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.chl.a forcing.chl.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.chl.b forcing.chl.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.offlux.a forcing.offlux.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.offlux.b forcing.offlux.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.rivers.a forcing.rivers.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.rivers.b forcing.rivers.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.ssh.a relax.ssh.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.ssh.b relax.ssh.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf2.a veldf2.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf2.b veldf2.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf4.a veldf4.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf4.b veldf4.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.tbaric.a tbaric.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.tbaric.b tbaric.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.iso.sigma.a iso.sigma.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.iso.sigma.b iso.sigma.b
+
+# link executable
+
+ln -sf $EXEC/iola_hycom_forecast .
+
+# remove files
+rm *sfcflx*
+rm gfs2ofs*
+

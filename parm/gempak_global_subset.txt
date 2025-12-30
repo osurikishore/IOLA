@@ -1,0 +1,66 @@
+UGRD:1000 mb
+VGRD:1000 mb
+RH:1000 mb
+SPFH:1000 mb
+ABSV:1000 mb
+HGT:1000 mb
+REFD:1000 mb
+TMP:1000 mb
+REFD:950 mb
+UGRD:850 mb
+VGRD:850 mb
+RH:850 mb
+SPFH:850 mb
+ABSV:850 mb
+HGT:850 mb
+TMP:850 mb
+REFD:850 mb
+UGRD:700 mb
+VGRD:700 mb
+RH:700 mb
+SPFH:700 mb
+ABSV:700 mb
+HGT:700 mb
+TMP:700 mb
+REFD:700 mb
+UGRD:500 mb
+VGRD:500 mb
+RH:500 mb
+SPFH:500 mb
+ABSV:500 mb
+HGT:500 mb
+TMP:500 mb
+REFD:500 mb
+UGRD:250 mb
+VGRD:250 mb
+RH:250 mb
+SPFH:250 mb
+ABSV:250 mb
+HGT:250 mb
+TMP:250 mb
+REFD:250 mb
+UGRD:50 mb
+VGRD:50 mb
+RH:50 mb
+SPFH:50 mb
+ABSV:50 mb
+HGT:50 mb
+TMP:50 mb
+PRMSL:mean sea level
+REFC:entire atmosphere (considered as a single layer)
+TMP:2 m above ground
+RH:2 m above ground
+UGRD:10 m above ground
+VGRD:10 m above ground
+CAPE:surface
+CIN:surface
+PWAT:entire atmosphere (considered as a single layer)
+HLCY:3000-0 m above ground
+PRES:tropopause
+HGT:tropopause
+TMP:tropopause
+POT:tropopause
+UGRD:tropopause
+VGRD:tropopause
+VWSH:tropopause
+HPBL:surface

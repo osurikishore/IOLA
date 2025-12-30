@@ -1,0 +1,15 @@
+&share
+debug=.false.
+is_ensemble_mean=<b:IS_ENSEMBLE_MEAN>
+is_ensemble_recenter=<b:IS_ENSEMBLE_RECENTER>
+ensemble_member_filename_list=<s:ENSEMBLE_MEMBER_FILENAME_LIST>
+/
+&ensemble_mean_io
+ensemble_mean_filename=<s:ENSEMBLE_MEAN_FILENAME>
+/
+&ensemble_recenter_io
+update_clouds=.false.
+recenter_compute=.false.
+ensemble_recenter_filename=<s:ENSEMBLE_RECENTER_FILENAME>
+ensemble_recenter_interp_filename=<s:ENSEMBLE_RECENTER_INTERP_FILENAME>
+/

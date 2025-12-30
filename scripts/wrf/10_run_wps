@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $wrf_init
+# ==============================
+
+$exec ./geogrid.exe > geog.log
+./ungrib.exe > ungrib.log
+$exec -n 96 ./metgrid.exe > metgrid.log
+
+MET_FILE=$(ls met_nmm.d01.* 2>/dev/null | head -n 1) && [ -n "$MET_FILE" ] && NEW_VALUE=$(ncdump -h "$MET_FILE" | grep "num_metgrid_levels = " | awk '{print $3}') && sed -i "s/num_metgrid_levels = [0-9]*,/num_metgrid_levels = $NEW_VALUE,/" namelist.input
+
+$exec ./real_nmm.exe > real.log
+

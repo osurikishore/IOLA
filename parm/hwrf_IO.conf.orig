@@ -1,0 +1,29 @@
+## This file sets up the HWRF configuration for JTWC Northern Indian Ocean.
+
+[config]
+run_ocean=yes      ;; 
+run_wave=no        ;; Wave coupling?
+run_gsi=no        ;; Disable GSI due to insufficient data
+run_ensemble_da=no ;; Disable ENSDA since GSI is disabled.
+run_ens_relocation=no ;; Disable ENSDA relocation since ENSDA is disabled.
+
+# Hycom ocean coupling
+ocean_model=HYCOM
+CASE_ROOT={config/case_root}
+NPROC_o=90
+
+[runwrf]
+ocean_ranks={hycominit/hycom_procs}  ;; Number of HyCOM ranks
+
+[moad_namelist]
+dynamics.coac=10.0
+
+[namelist_outer]
+dynamics.coac=10.0
+
+[namelist_inner]
+dynamics.coac=1.9
+
+[dir]
+# Path to HyCOM fix files
+FIXhycom={FIXhwrf}/hwrf-hycom

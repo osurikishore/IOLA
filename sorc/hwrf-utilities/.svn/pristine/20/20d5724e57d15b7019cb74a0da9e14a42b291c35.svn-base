@@ -1,0 +1,5 @@
+.PHONY: get_bufrlib
+get_bufrlib: 
+	./copy_bufrlib.csh
+prerequisites: get_bufrlib
+target: prerequisites

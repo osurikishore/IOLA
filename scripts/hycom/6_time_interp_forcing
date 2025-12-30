@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Stop on errors
+set -e
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $hycom_init
+# ==========================================
+# CONFIGURATION
+# ==========================================
+
+EXEC_PATH="${iola_repo_path}/sorc/hycom/exec/./iola_ofs_timeinterp_forcing"
+
+############################################################################
+#    hwrf_ofs_timeinterp_forcing
+###########################################################################
+
+# Create timestep forcing input files
+declare -A firstvar=(
+    [airtmp]="precip"
+    [precip]="airtmp"
+    [presur]="precip"
+    [radflx]="airtmp"
+    [shwflx]="airtmp"
+    [surtmp]="precip"
+    [tauewd]="airtmp"
+    [taunwd]="airtmp"
+    [vapmix]="precip"
+    [wndspd]="precip"
+)
+
+num=$(head -n 1 listflx.dat)
+
+# Loop through all forcing variable names
+for var in "${!firstvar[@]}"; do
+    file="timeinterp_forcing.${var}.in"
+    fv="${firstvar[$var]}"
+
+    cat << EOF > "$file"
+$fv
+5
+$num
+$var
+5
+$num
+   $var:
+EOF
+
+    echo "Created $file"
+done
+
+# Check if there are any files matching the pattern
+if ls timeinterp_forcing.*.in >/dev/null 2>&1; then
+  # Loop through each file matching timeinterp_forcing.*.in
+  for file in timeinterp_forcing.*.in; do
+    echo "Processing $file..."
+    cat "$file" | $EXEC_PATH
+    if [ $? -eq 0 ]; then
+      echo "$file processed successfully."
+    else
+      echo "Error processing $file."
+    fi
+  done
+else
+  echo "No files matching timeinterp_forcing.*.in found."
+  exit 1
+fi
+

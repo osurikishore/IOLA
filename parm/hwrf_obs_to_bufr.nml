@@ -1,0 +1,17 @@
+&share
+    analdate = <s:ANALDATE>
+    datapath = <s:DATAPATH>
+    debug = .false.
+/
+
+&bufr
+    bufr_filepath = <s:BUFR_FILEPATH> 
+    bufr_tblpath = <s:BUFR_TBLPATH>
+/
+
+&obs
+    hsa = .true.
+    intrp_obserr = .true.
+    obs_filepath = <s:OBS_FILEPATH> 
+    obserr_filepath = <s:OBSERR_FILEPATH>
+/

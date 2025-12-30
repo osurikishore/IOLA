@@ -1,0 +1,133 @@
+#!/bin/bash
+set -euo pipefail
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+# ==========================================================
+# User settings
+# ==========================================================
+CYCLE="${cycle:0:8}"               # YYYYMMDD
+FCST_LEN=$forecast_length          # final forecast hour for 00Z cycle
+ROOT_DATA=$input_data_path
+
+RTOFS_DIR="${ROOT_DATA}/rtofs"
+GFS_DIR="${ROOT_DATA}/gfs"
+
+RTOFS_BASE_URL="https://noaa-nws-rtofs-pds.s3.amazonaws.com"
+GFS_BASE_URL="https://noaa-gfs-bdp-pds.s3.amazonaws.com"
+
+# ==========================================================
+# Create root folders
+# ==========================================================
+mkdir -p "${RTOFS_DIR}" "${GFS_DIR}"
+
+# ==========================================================
+# -------------------- RTOFS SECTION ------------------------
+# ==========================================================
+RTOFS_FILES=(
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n00.restart.a.tgz"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-24.archv.a.tgz"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-18.archv.a.tgz"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-12.archv.a.tgz"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-06.archv.a.tgz"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n00.archv.a.tgz"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n00.restart.b"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-24.archv.b"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-18.archv.b"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-12.archv.b"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n-06.archv.b"
+  "rtofs.${CYCLE}/rtofs_glo.t00z.n00.archv.b"
+)
+
+cd "${RTOFS_DIR}"
+mkdir -p "rtofs.${CYCLE}"
+cd "rtofs.${CYCLE}"
+
+for file in "${RTOFS_FILES[@]}"; do
+    echo "Downloading RTOFS: ${file}"
+    wget "${RTOFS_BASE_URL}/${file}"
+done
+
+for tgz in *.tgz; do
+    tar -xzvf "${tgz}"
+done
+rm -f *.tgz
+
+# ---- Previous day restart ----
+PRE_DAY=$(date -d "${CYCLE} -1 day" +"%Y%m%d")
+
+cd "${RTOFS_DIR}"
+mkdir -p "rtofs.${PRE_DAY}"
+cd "rtofs.${PRE_DAY}"
+
+PRE_FILE="rtofs.${PRE_DAY}/rtofs_glo.t00z.n00.restart.a.tgz"
+wget "${RTOFS_BASE_URL}/${PRE_FILE}"
+tar -xzvf rtofs_glo.t00z.n00.restart.a.tgz
+rm -f rtofs_glo.t00z.n00.restart.a.tgz
+PRE_FILE="rtofs.${PRE_DAY}/rtofs_glo.t00z.n00.restart.b"
+wget "${RTOFS_BASE_URL}/${PRE_FILE}"
+
+# ==========================================================
+# ---------------------- GFS SECTION ------------------------
+# ==========================================================
+cd "${GFS_DIR}"
+
+START_DATE=$(date -d "${CYCLE} -1 day" +"%Y%m%d")
+END_DATE="${CYCLE}"
+
+current=$(date -d "${START_DATE}" +%s)
+end=$(date -d "${END_DATE}" +%s)
+
+cycles=("00" "06" "12" "18")
+fhrs=("003" "006")
+
+# ---- Loop from start_date to (but NOT including) end_date ----
+while [ "${current}" -lt "${end}" ]; do
+    ymd=$(date -u -d "@${current}" +%Y%m%d)
+
+    for cyc in "${cycles[@]}"; do
+        dirname="gfs.${ymd}${cyc}"
+        mkdir -p "${dirname}"
+        cd "${dirname}"
+
+        echo "Downloading GFS ${ymd} ${cyc}Z"
+
+        for fh in "${fhrs[@]}"; do
+            url="${GFS_BASE_URL}/gfs.${ymd}/${cyc}/atmos/gfs.t${cyc}z.pgrb2.0p25.f${fh}"
+            wget --no-check-certificate "${url}"
+        done
+
+        cd ..
+    done
+
+    current=$(( current + 86400 ))
+done
+
+PREV_DAY=$(date -d "${START_DATE} -1 day" +"%Y%m%d")
+dir_18="gfs.${PREV_DAY}18"
+mkdir -p "${dir_18}"
+cd "${dir_18}"
+
+for fh in "${fhrs[@]}"; do
+    url="${GFS_BASE_URL}/gfs.${PREV_DAY}/18/atmos/gfs.t18z.pgrb2.0p25.f${fh}"
+    wget --no-check-certificate "${url}"
+done
+
+cd "${GFS_DIR}"
+dir_00="gfs.${END_DATE}00"
+mkdir -p "${dir_00}"
+cd "${dir_00}"
+
+for (( fh=0; fh<=FCST_LEN; fh+=3 )); do
+    fh_fmt=$(printf "%03d" "${fh}")
+    url="${GFS_BASE_URL}/gfs.${END_DATE}/00/atmos/gfs.t00z.pgrb2.0p25.f${fh_fmt}"
+    wget --no-check-certificate "${url}"
+done
+
+echo "RTOFS and GFS data download complete."
+

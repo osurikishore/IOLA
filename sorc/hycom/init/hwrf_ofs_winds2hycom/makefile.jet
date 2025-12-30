@@ -1,0 +1,24 @@
+PATH_TO_NWJET=../../nwjet
+include ../../nwjet/sorc/config/configure.hycom
+
+LIBS = -L$(LIB_OFSMODS_PATH) -lofs_mods -lw3_i4r4 -lbacio_i4r4
+INCMOD = $(LIB_OFSMODS_PATH)/ofs_mods
+
+CPPFLAGS+= -I$(INCMOD)
+FFLAGS += -I$(INCMOD)
+F90FLAGS=$(FFLAGS)
+
+SRCS=  mod_gribio.f90  mod_flags.f90 constants.f90 horiz_interp.f90 mod_geom.f90  wind2hycom.f90  flush.f90
+
+OBJS=   ${SRCS:.f90=.o}
+
+EXEC	= hwrf_ofs_wind2hycom
+
+$(EXEC):	$(OBJS)
+	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+
+.PHONY: clean
+
+clean:
+	$(RM) $(OBJS) $(EXEC) *.mod
+

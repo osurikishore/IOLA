@@ -1,0 +1,25 @@
+ 
+**** Compiling NCEP Coupler ****
+ 
+/bin/rm: No match.
+Making all in /work2/09534/st37357/stampede3/IOLA_repository/sorc/ncep-coupler/hwrf_wm3c
+make[1]: Entering directory '/work2/09534/st37357/stampede3/IOLA_repository/sorc/ncep-coupler/hwrf_wm3c'
+Makefile:15: warning: overriding recipe for target '.f.o'
+../configure.cpl:61: warning: ignoring old recipe for target '.f.o'
+Makefile:15: warning: ignoring prerequisites on suffix rule definition
+Makefile:15: warning: ignoring prerequisites on suffix rule definition
+Makefile:15: warning: ignoring prerequisites on suffix rule definition
+Makefile:15: warning: ignoring prerequisites on suffix rule definition
+mpif90 -fc=ifort -O3 -xW -fp-model precise -assume byterecl -convert big_endian -DLINUX  -i4 -r8 -c cplmp.comm.f
+ifort: command line warning #10131: extension 'W' not supported ignored in option '-x'
+mpif90 -fc=ifort -O3 -xW -fp-model precise -assume byterecl -convert big_endian -DLINUX  -i4 -r8 -c mpi_more.f
+ifort: command line warning #10131: extension 'W' not supported ignored in option '-x'
+mpif90 -fc=ifort -O3 -xW -fp-model precise -assume byterecl -convert big_endian -DLINUX  -i4 -r8 -c interp.f
+ifort: command line warning #10131: extension 'W' not supported ignored in option '-x'
+mpif90 -fc=ifort -O3 -xW -fp-model precise -assume byterecl -convert big_endian -DLINUX  -i4 -r8 -c wrf_stuff.f
+ifort: command line warning #10131: extension 'W' not supported ignored in option '-x'
+mpif90 -fc=ifort -O3 -xW -fp-model precise -assume byterecl -convert big_endian -DLINUX  -i4 -r8 -c cpl3.f
+ifort: command line warning #10131: extension 'W' not supported ignored in option '-x'
+mpif90 -fc=ifort -Wl,-noinhibit-exec -lm  -o ../cpl_exec/hwrf_wm3c.exe cplmp.comm.o mpi_more.o interp.o wrf_stuff.o cpl3.o
+ifort: warning #10315: specifying -lm before files may supersede the Intel(R) math library and affect performance
+make[1]: Leaving directory '/work2/09534/st37357/stampede3/IOLA_repository/sorc/ncep-coupler/hwrf_wm3c'

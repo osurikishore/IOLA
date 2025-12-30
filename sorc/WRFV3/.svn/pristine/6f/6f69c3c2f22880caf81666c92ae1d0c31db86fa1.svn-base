@@ -1,0 +1,215 @@
+# Stochastic forcing option, for NMM only
+
+# 3D arrays
+state    real   VERTSTRUCC    ijk  dyn_nmm 1 -   rd         "VERTSTRUCC"     "vertical structure for stoch. forcing " ""
+state    real   VERTSTRUCS    ijk  dyn_nmm 1 -   rd         "VERTSTRUCS"     "vertical structure for stoch. forcing " ""
+ 
+
+# full or possibly thin (i.e., length of 1) 3D arrays depending of dimension ij{stoclev} 
+state    integer FORCE_SPPT     {stoclev}    dyn_nmm 1 -   -        "FORCE_SPPT"          "IF FORCE_SPPT(1) IS 1, FEED SPPT FROM PARENT EVERY DT" ""
+state    real   ru_tendf_stoch  ij{stoclev}  dyn_nmm 1 X   rhd=(DownVel) "ru_tendf_stoch" "stochastic forcing, U " "m/s^2"
+state    real   rv_tendf_stoch  ij{stoclev}  dyn_nmm 1 Y   rhd=(DownVel) "rv_tendf_stoch" "stochastic forcing, V " "m/s^2"
+state    real   rt_tendf_stoch  ij{stoclev}  dyn_nmm 1 -   rhf=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "rt_tendf_stoch" "stochastic forcing,T" "K/s"
+state    real   rand_pert       ij{stoclev}  dyn_nmm 1 -   rhf=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "rand_pert"       "randomn field " ""
+state    real   rstoch          ij{stoclev}  dyn_nmm 1 -   rhf=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "rstoch"          "randomn field for SPPT" ""
+state    real   field_spp_mp    ij{stoclev}  dyn_nmm 1 -   h  "field_mp" "field for mp-perturbations " ""
+state    real   pattern_spp_mp  ij{stoclev}  dyn_nmm 1 -   rhf=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "pattern_spp_mp" "pattern sppt mp" ""
+
+state    real   pattern_isppt_mp   ij{stoclev}  dyn_nmm 1 - rh023f=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "pattern_isppt_mp"   "pattern sppt mp" ""
+state    real   pattern_isppt_pbl  ij{stoclev}  dyn_nmm 1 - rh023f=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "pattern_isppt_pbl"  "pattern sppt pbl" ""
+state    real   pattern_isppt_rad  ij{stoclev}  dyn_nmm 1 - rh023f=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "pattern_isppt_rad"  "pattern sppt rad" ""
+state    real   pattern_isppt_conv ij{stoclev}  dyn_nmm 1 - rh023f=(force_sppt_nmm:IIH,JJH,HBWGT1,HBWGT2,HBWGT3,HBWGT4) "pattern_isppt_conv" "pattern sppt conv" ""
+
+state    real   RAND_REAL       ij{stoclev}  dyn_nmm 1 XYZ -          "RAND_REAL"       "array for FFTs" ""
+state    real   RAND_IMAG       ij{stoclev}  dyn_nmm 1 XYZ -          "RAND_IMAG"       "array for FFTs" ""
+ 
+# 2d arrays
+state    real  SPSTREAMFORCC  ij   misc   1 XY  r          "SPSTREAMFORCC"  "real  spect. coeff. of stoch. streamfunction perturb." ""
+state    real  SPSTREAMFORCS  ij   misc   1 XY  r          "SPSTREAMFORCS"  "imag. spect. coeff. of stoch. streamfunction perturb." ""
+state    real  SPSTREAM_AMP   ij   misc   1 -   r          "SPSTREAM_AMP"   "amplitude of stoch. streamfunction perturb." "" ""
+state    real  SPTFORCC       ij   misc   1 XY  r          "SPTFORCC"       "real  spect. coeff. of stoch. temperature perturb." "" ""
+state    real  SPTFORCS       ij   misc   1 XY  r          "SPTFORCS"       "imag. spect. coeff. of stoch. temperature perturb." "" ""
+state    real  SPT_AMP        ij   misc   1 -   r          "SPT_AMP"        "amplitude of stoch. temperature perturb." "" ""
+
+state    real  SPFORCC        ij   misc   1 XY  r          "SPFORCC"        "real  spect. coeff. of randomn perturbation field" "" ""
+state    real  SPFORCS        ij   misc   1 XY  r          "SPFORCS"        "imag. spect. coeff. of randomn perturbation field" "" ""
+state    real  SP_AMP         ij   misc   1 -   r          "SP_AMP"         "amplitude of random perturbation field" "" ""
+
+state    real  SPPTFORCC      ij   misc   1 XY  r          "SPPTFORCC"      "real  spect. coeff. of randomn perturbation field in SPPT" "" ""
+state    real  SPPTFORCS      ij   misc   1 XY  r          "SPPTFORCS"      "imag. spect. coeff. of randomn perturbation field in SPPT" "" ""
+state    real  SPPT_AMP       ij   misc   1 -   r          "SPPT_AMP"       "amplitude of random perturbation field in SPPT" "" ""
+
+state    real  SPFORCC_isppt_mp  ij   misc   1 XY  r       "SPFORCC_isppt_mp"        "real  spect. coeff. of randomn perturbation field" "" ""
+state    real  SPFORCS_isppt_mp  ij   misc   1 XY  r       "SPFORCS_isppt_mp"        "imag. spect. coeff. of randomn perturbation field" "" ""
+state    real  SP_AMP_isppt_mp   ij   misc   1 -   r       "SP_AMP_isppt_mp"         "amplitude of random perturbation field" "" ""
+
+state    real  SPFORCC_isppt_pbl  ij   misc   1 XY  r      "SPFORCC_isppt_pbl"        "real  spect. coeff. of randomn perturbation field" "" ""
+state    real  SPFORCS_isppt_pbl  ij   misc   1 XY  r      "SPFORCS_isppt_pbl"        "imag. spect. coeff. of randomn perturbation field" "" ""
+state    real  SP_AMP_isppt_pbl   ij   misc   1 -   r      "SP_AMP_isppt_pbl"         "apbllitude of random perturbation field" "" ""
+
+state    real  SPFORCC_isppt_rad  ij   misc   1 XY  r      "SPFORCC_isppt_rad"        "real  spect. coeff. of randomn perturbation field" "" ""
+state    real  SPFORCS_isppt_rad  ij   misc   1 XY  r      "SPFORCS_isppt_rad"        "imag. spect. coeff. of randomn perturbation field" "" ""
+state    real  SP_AMP_isppt_rad   ij   misc   1 -   r      "SP_AMP_isppt_rad"         "aradlitude of random perturbation field" "" ""
+
+state    real  SPFORCC_isppt_conv  ij   misc   1 XY  r     "SPFORCC_isppt_conv"        "real  spect. coeff. of randomn perturbation field" "" ""
+state    real  SPFORCS_isppt_conv  ij   misc   1 XY  r     "SPFORCS_isppt_conv"        "imag. spect. coeff. of randomn perturbation field" "" ""
+state    real  SP_AMP_isppt_conv   ij   misc   1 -   r     "SP_AMP_isppt_conv"         "aconvlitude of random perturbation field" "" ""
+
+state    real  SPFORCC_spp_mp  ij   misc   1 XY  r         "SPFORCC_spp_mp"        "real  spect. coeff. of randomn perturbation field" "" ""
+state    real  SPFORCS_spp_mp  ij   misc   1 XY  r         "SPFORCS_spp_mp"        "imag. spect. coeff. of randomn perturbation field" "" ""
+state    real  SP_AMP_spp_mp   ij   misc   1 -   r         "SP_AMP_spp_mp"         "amplitude of random perturbation field" "" ""
+
+# 1d arrays
+state    real  VERTAMPT        k   misc   1 -   r          "VERTAMPT"       "vert. amplitude of stoch. temperature perturb." "" ""
+state    real  VERTAMPUV       k   misc   1 -   r          "VERTAMPUV"      "vert. amplitude of stoch. u,v perturb." "" ""
+state integer  ISEEDARR_RAND_PERT k   misc   1  -   rh     "ISEEDARR_RAND_PERTURB"      "Array to hold seed for restart, RAND_PERT" "" ""
+state integer  ISEEDARR_SPPT      k   misc   1  -   rh     "ISEEDARR_SPPT"              "Array to hold seed for restart, SPPT" "" ""
+state integer  ISEEDARR_SKEBS     k   misc   1  -   rh     "ISEEDARR_SKEBS"             "Array to hold seed for restart, SKEBS" "" ""
+state integer  iseedarr_isppt_mp  k   misc   1  -   rh     "iseedarr_isppt_mp"          "Array to hold seed for restart, iSPPTmp" "" ""
+state integer  iseedarr_isppt_pbl k   misc   1  -   rh     "iseedarr_isppt_pbl"          "Array to hold seed for restart, iSPPTpbl" "" ""
+state integer  iseedarr_isppt_rad k   misc   1  -   rh     "iseedarr_isppt_rad"          "Array to hold seed for restart, iSPPTrad" "" ""
+state integer  iseedarr_isppt_conv k  misc   1  -   rh     "iseedarr_isppt_conv"          "Array to hold seed for restart, iSPPTconv" "" ""
+state integer  iseedarr_spp_mp    k   misc   1  -   rh     "iseedarr_spp_mp"          "Array to hold seed for restart, iSPPTmp" "" ""
+
+# 1d arrays for FFT transpose
+state    real   RAND_REAL_xxx   ij{stoclev}x dyn_nmm 1 XYZ
+state    real   RAND_REAL_yyy   ij{stoclev}y dyn_nmm 1 XYZ
+state    real   RAND_IMAG_xxx   ij{stoclev}x dyn_nmm 1 XYZ
+state    real   RAND_IMAG_yyy   ij{stoclev}y dyn_nmm 1 XYZ
+
+xpose XPOSE_RAND_REAL  dyn_nmm RAND_REAL,RAND_REAL_xxx,RAND_REAL_yyy
+xpose XPOSE_RAND_IMAG  dyn_nmm RAND_IMAG,RAND_IMAG_xxx,RAND_IMAG_yyy
+
+# Variables 
+state real      ALPH_T           -      misc        1         -     -         "ALPH_TAU "   "autoregressive coeff. for theta  perturb."  ""
+state real      ALPH_PSI         -      misc        1         -     -         "ALPH_PSI "   "autoregressive coeff. for psi    perturb."  ""
+state real      ALPH_SPPT        -      misc        1         -     -         "ALPH_SPPT"   "autoregressive coeff. for tendf  perturb."  ""
+state real      ALPH_RAND        -      misc        1         -     -         "ALPH_RAND "  "autoregressive coeff. for generic rand. pert."  ""
+state real      ALPH_isppt_mp    -      misc        1         -     -         "ALPH_RAND2"  "autoregressive coeff. for generic rand. pert."  ""  
+state real      ALPH_isppt_pbl   -      misc        1         -     -         "ALPH_RAND2"  "autoregressive coeff. for generic rand. pert."  ""  
+state real      ALPH_isppt_rad   -      misc        1         -     -         "ALPH_RAND2"  "autoregressive coeff. for generic rand. pert."  ""  
+state real      ALPH_isppt_conv  -      misc        1         -     -         "ALPH_RAND2"  "autoregressive coeff. for generic rand. pert."  ""  
+state real      ALPH_spp_mp      -      misc        1         -     -         "ALPH_RAND2"  "autoregressive coeff. for generic rand. pert."  ""  
+state logical   did_stoch        -      misc        1         -     r         "DID_STOCH"   "Logical to tell us that we already did the initialization for dom 1"  ""
+
+# Namelist parameters for random number streams
+rconfig   integer     nens                namelist,stoch      1        1         - "random number seed for ensemble members "    ""   ""
+
+# Namelist parameters for SKEBS
+rconfig   integer     skebs               namelist,stoch      max_domains    0         - "stochastic forcing option: 0=none, 1=SKEBS"
+rconfig   integer     stoch_force_opt     namelist,stoch      max_domains    0         - "same as skebs - retained for backward compatibility"
+rconfig   integer     skebs_vertstruc     namelist,stoch      1              0         - "vertical structure for skebs: 0=constant, 1=random phase"
+rconfig   integer     stoch_vertstruc_opt namelist,stoch      max_domains    0         - "same as skebs_vertstruc - retained for backward compatibility"
+rconfig   real        tot_backscat_psi    namelist,stoch      max_domains    1.0E-05   - "total backscattered diss. for streamfunction m2 s-3"   ""
+rconfig   real        tot_backscat_t      namelist,stoch      max_domains    1.0E-06   - "total backscattered diss. rate for pot. temperature"    "m2 s-3" ""
+rconfig   real        ztau_psi            namelist,stoch      1              10800.0   - "decorr. time of noise for psi perturb."
+rconfig   real        ztau_t              namelist,stoch      1              10800.0   - "decorr. time of noise for theta perturb."    "s" ""
+rconfig   real        rexponent_psi       namelist,stoch      1             -1.83      - "spectral slope of forcing for psi"    "" ""
+rconfig   real        rexponent_t         namelist,stoch      1             -1.83      - "spectral slope of forcing for theta "    "" ""
+rconfig   real        zsigma2_eps         namelist,stoch      1              0.0833    - "variance of noise for psi perturb."    "" ""
+rconfig   real        zsigma2_eta         namelist,stoch      1              0.0833    - "variance of noise for theta perturb."    "" ""
+rconfig   integer     kminforc            namelist,stoch      1              1         - "min. forcing wavenumber in lon. for psi perturb."    "" ""
+rconfig   integer     lminforc            namelist,stoch      1              1         - "min. forcing wavenumber in lat. for psi perturb."    "" ""
+rconfig   integer     kminforct           namelist,stoch      1              1         - "min. forcing wavenumber in lon. for theta perturb."    "" ""
+rconfig   integer     lminforct           namelist,stoch      1              1         - "min. forcing wavenumber in lat. for theta perturb."    "" ""
+rconfig   integer     kmaxforc            namelist,stoch      1              1000000   - "max. forcing wavenumber in lon. for psi perturb."     "" ""
+rconfig   integer     lmaxforc            namelist,stoch      1              1000000   - "max. forcing wavenumber in lat. for psi perturb."    "" ""
+rconfig   integer     kmaxforct           namelist,stoch      1              1000000   - "max. forcing wavenumber in lon. for theta perturb."    "" ""
+rconfig   integer     lmaxforct           namelist,stoch      1              1000000   - "max. forcing wavenumber in lat. for theta perturb."    "" ""
+rconfig   integer     ISEED_SKEBS         namelist,stoch      1                  811   - "ISEED_SKEBS"           "RANDOM SEED FOR SKEBS "  ""
+rconfig   integer     kmaxforch           derived             1               0        - "sneak variable to make it work"    "" ""
+rconfig   integer     lmaxforch           derived             1               0        - "sneak variable to make it work"    "" ""
+rconfig   integer     kmaxforcth          derived             1               0        - "sneak variable to make it work"    "" ""
+rconfig   integer     lmaxforcth          derived             1               0        - "sneak variable to make it work"    "" ""
+
+# Namelist parameters for stochastically parameterized perturbation tendencies (SPPT)
+
+rconfig   integer     sppt                    namelist,stoch      max_domains            0  - "generate array with random perturbations: 0=off, 1=on"
+rconfig   real        gridpt_stddev_sppt      namelist,stoch      max_domains          0.5  - "gridpoint standard deviation of random perturbations in SPPT"
+rconfig   real        stddev_cutoff_sppt      namelist,stoch      max_domains          2.0  - "cutoff tails of pdf above this threshold standard deviation"
+rconfig   real        lengthscale_sppt        namelist,stoch      max_domains     150000.0  - "Correlation length scale in meters for SPPT"
+rconfig   real        timescale_sppt          namelist,stoch      max_domains      21600.0  - "Decorrelation time scale in s for SPPT"
+rconfig   integer     sppt_vertstruc          namelist,stoch      1                      0 -  "vertical structure for sppt: 0=constant, 1=random phase"
+rconfig   integer     iseed_sppt              namelist,stoch      1                     53  - "ISEED_SPPT"            "RANDOM SEED FOR SPPT "  ""
+
+# Namelist parameters for stochastically perturbed parameters (SPP) for mp  
+
+rconfig   integer     spp_mp                namelist,stoch      max_domains           0  - "generate array with random perturbations: 0=off, 1=on"
+rconfig   real        gridpt_stddev_spp_mp  namelist,stoch      max_domains         0.5  - "gridpoint standard deviation of random perturbations"
+rconfig   real        stddev_cutoff_spp_mp  namelist,stoch      max_domains         2.0  - "cutoff tails of pdf above this threshold standard deviation"
+rconfig   real        lengthscale_spp_mp    namelist,stoch      max_domains    150000.0  - "Correlation length scale in meters"
+rconfig   real        timescale_spp_mp      namelist,stoch      max_domains     21600.0  - "Decorrelation time scale in s"
+rconfig   integer     vertstruc_spp_mp      namelist,stoch      1                      0 -  "vertical structure for random perturb: 0=constant, 1=random phase"
+rconfig   integer     iseed_spp_mp          namelist,stoch      1                   317  - "ISEED_RAND_PERT"       "RANDOM SEED FOR RAND_PERT "  ""  
+
+# Namelist parameters for stochastically perturbed micro-physics tendencies (iSPPT-mp)
+rconfig   integer     isppt_mp               namelist,stoch      max_domains           0  - "generate array with random perturbations: 0=off, 1=on"
+rconfig   real        gridpt_stddev_isppt_mp namelist,stoch      max_domains         0.5  - "gridpoint standard deviation of random perturbations"
+rconfig   real        stddev_cutoff_isppt_mp namelist,stoch      max_domains         2.0  - "cutoff tails of pdf above this threshold standard deviation"
+rconfig   real        lengthscale_isppt_mp   namelist,stoch      max_domains   150000.0   - "Correlation length scale in meters"
+rconfig   real        timescale_isppt_mp     namelist,stoch      max_domains     21600.0  - "Decorrelation time scale in s"
+rconfig   integer     vertstruc_isppt_mp     namelist,stoch      1                     0  -  "vertical structure for random perturb: 0=constant, 1=random phase"
+rconfig   integer     iseed_isppt_mp          namelist,stoch      1                   217 - "ISEED_RAND_PERT"       "RANDOM SEED FOR RAND_PERT "  ""
+
+# Namelist parameters for stochastically perturbed PBL tendencies (iSPPT-pbl) 
+
+rconfig   integer     isppt_pbl               namelist,stoch      max_domains           0  - "generate array with random perturbations: 0=off, 1=on"
+rconfig   real        gridpt_stddev_isppt_pbl namelist,stoch      max_domains         0.5  - "gridpoint standard deviation of random perturbations"
+rconfig   real        stddev_cutoff_isppt_pbl namelist,stoch      max_domains         2.0  - "cutoff tails of pdf above this threshold standard deviation"
+rconfig   real        lengthscale_isppt_pbl   namelist,stoch      max_domains    150000.0  - "Correlation length scale in meters"
+rconfig   real        timescale_isppt_pbl     namelist,stoch      max_domains     21600.0  - "Decorrelation time scale in s"
+rconfig   integer     vertstruc_isppt_pbl     namelist,stoch      1                     0  -  "vertical structure for random perturb: 0=constant, 1=random phase"
+rconfig   integer     iseed_isppt_pbl         namelist,stoch      1                   517  - "ISEED_RAND_PERT"       "RANDOM SEED FOR RAND_PERT "  ""
+
+# Namelist parameters for stochastically perturbed radiation tendencies (iSPPT-rad) 
+
+rconfig   integer     isppt_rad               namelist,stoch      max_domains           0  - "generate array with random perturbations: 0=off, 1=on"
+rconfig   real        gridpt_stddev_isppt_rad namelist,stoch      max_domains         0.5  - "gridpoint standard deviation of random perturbations"
+rconfig   real        stddev_cutoff_isppt_rad namelist,stoch      max_domains         2.0  - "cutoff tails of pdf above this threshold standard deviation"
+rconfig   real        lengthscale_isppt_rad   namelist,stoch      max_domains    150000.0  - "Correlation length scale in meters"
+rconfig   real        timescale_isppt_rad     namelist,stoch      max_domains     21600.0  - "Decorrelation time scale in s"
+rconfig   integer     vertstruc_isppt_rad     namelist,stoch      1                     0  -  "vertical structure for random perturb: 0=constant, 1=random phase"
+rconfig   integer     iseed_isppt_rad         namelist,stoch      1                   617  - "ISEED_RAND_PERT"       "RANDOM SEED FOR RAND_PERT "  ""
+
+# Namelist parameters for stochastically perturbed conviation tendencies (iSPPT-conv) 
+
+rconfig   integer     isppt_conv               namelist,stoch      max_domains           0  - "generate array with random perturbations: 0=off, 1=on"
+rconfig   real        gridpt_stddev_isppt_conv namelist,stoch      max_domains         0.5 - "gridpoint standard deviation of random perturbations"
+rconfig   real        stddev_cutoff_isppt_conv namelist,stoch      max_domains         2.0  - "cutoff tails of pdf above this threshold standard deviation"
+rconfig   real        lengthscale_isppt_conv   namelist,stoch      max_domains   150000.0  - "Correlation length scale in meters"
+rconfig   real        timescale_isppt_conv     namelist,stoch      max_domains     21600.0  - "Decorrelation time scale in s"
+rconfig   integer     vertstruc_isppt_conv     namelist,stoch      1                     0 -  "vertical structure for random perturb: 0=constant, 1=random phase"
+rconfig   integer     iseed_isppt_conv         namelist,stoch      1                   917  - "ISEED_RAND_PERT"       "RANDOM SEED FOR RAND_PERT "  ""
+
+# Namelist parameters for random perturbations
+
+rconfig   integer     rand_perturb            namelist,stoch      max_domains           0  - "generate array with random perturbations: 0=off, 1=on"
+rconfig   real        gridpt_stddev_rand_pert namelist,stoch      max_domains         0.03  - "gridpoint standard deviation of random perturbations"
+rconfig   real        stddev_cutoff_rand_pert namelist,stoch      max_domains         3.0  - "cutoff tails of pdf above this threshold standard deviation"
+rconfig   real        lengthscale_rand_pert   namelist,stoch      max_domains    500000.0  - "Correlation length scale in meters"
+rconfig   real        timescale_rand_pert     namelist,stoch      max_domains     21600.0  - "Decorrelation time scale in s"
+rconfig   integer     rand_pert_vertstruc     namelist,stoch      1                      0 -  "vertical structure for random perturb: 0=constant, 1=random phase"
+rconfig   integer     ISEED_RAND_PERT         namelist,stoch      1                    17  - "ISEED_RAND_PERT"       "RANDOM SEED FOR RAND_PERT "  ""
+
+
+# Derived namelist parameters used in share/module_check_amundo.F
+
+rconfig   integer     skebs_on                derived    1        0       - "skebs_on"         "skebs arrays are declared&filled for all domains"          ""
+rconfig   integer     sppt_on                 derived    1        0       - "sppt_on"          "sppt arrays are declared&filled for all domains"           ""
+rconfig   integer     isppt_on                derived    1        0       - "isppt_on"         "isppt arrays are declared&filled for all domains"           ""
+rconfig   integer     spp_on                  derived    1        0       - "spp_on"           "spp  arrays are declared&filled for all domains"           ""
+rconfig   integer     rand_perturb_on         derived    1        0       - "rand_perturb_on " "random perturb. array is declared&filled for all domains"  ""
+rconfig   integer     num_stoch_levels        derived    1        1       - "num_stoch_levels" "number of vertical levels of random fields"  ""
+
+# Package declarations
+
+package  sppt_perturb    sppt_on==1          -   state:rstoch,SPPTFORCS,SPPTFORCC,SPPT_AMP,VERTSTRUCC,VERTSTRUCS,VERTAMPT,RAND_REAL,RAND_IMAG,RAND_REAL_xxx,RAND_REAL_yyy,RAND_IMAG_xxx,RAND_IMAG_yyy
+
+package  random_perturb  rand_perturb_on==1  -   state:rand_pert,SPFORCS,SPFORCC,SP_AMP,VERTSTRUCC,VERTSTRUCS,VERTAMPT,RAND_REAL,RAND_IMAG,RAND_REAL_xxx,RAND_REAL_yyy,RAND_IMAG_xxx,RAND_IMAG_yyy
+
+package  skebs_perturb    skebs_on==1         -   state:ru_tendf_stoch,rv_tendf_stoch,rt_tendf_stoch,SPSTREAMFORCC,SPSTREAMFORCS,SPTFORCC,SPTFORCS,SPSTREAM_AMP,SPT_AMP,VERTSTRUCC,VERTSTRUCS,VERTAMPT,VERTAMPUV,RAND_REAL,RAND_IMAG,RAND_REAL_xxx,RAND_REAL_yyy,RAND_IMAG_xxx,RAND_IMAG_yyy
+
+package  stoch_param_perturb spp_on==1        -   state:pattern_spp_mp,field_spp_mp,SPFORCS_spp_mp,SPFORCC_spp_mp,SP_AMP_spp_mp,VERTSTRUCC,VERTSTRUCS,VERTAMPT,RAND_REAL,RAND_IMAG,RAND_REAL_xxx,RAND_REAL_yyy,RAND_IMAG_xxx,RAND_IMAG_yyy
+ 
+package  isppt_perturb  isppt_on==1        -   state:pattern_isppt_mp,SPFORCS_isppt_mp,SPFORCC_isppt_mp,SP_AMP_isppt_mp,pattern_isppt_rad,SPFORCS_isppt_rad,SPFORCC_isppt_rad,SP_AMP_isppt_rad,pattern_isppt_conv,SPFORCS_isppt_conv,SPFORCC_isppt_conv,SP_AMP_isppt_conv,pattern_isppt_pbl,SPFORCS_isppt_pbl,SPFORCC_isppt_pbl,SP_AMP_isppt_pbl,VERTSTRUCC,VERTSTRUCS,VERTAMPT,RAND_REAL,RAND_IMAG,RAND_REAL_xxx,RAND_REAL_yyy,RAND_IMAG_xxx,RAND_IMAG_yyy
+

@@ -1,0 +1,24 @@
+&input
+ensmax = 10, 20, 40
+atcf_glob = '*GFDL*atcfunix', '*hwrf*atcfunix', '*coamps*atcfunix'
+name = 'GFDL', 'HWRF', 'COTC'
+subname = 'GFDL', 'HWRF', 'COTC',
+/
+
+&proc
+stdev0 = 30e3, 30e3, 30e3
+stdev120 = 120e3, 120e3, 120e3
+cendist = 50e3, 50e3, 50e3
+maxdist = 290e3, 290e3, 290e3
+
+latres = 0.05
+lonres = 0.05
+weight_method = 1
+time_step_hrs = 6
+/
+
+&output
+out_pgm_format='multimodel_prob_f<ifhr>.pgm'
+out_times = 6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, &
+            96, 102, 108, 114, 120, 126,
+/

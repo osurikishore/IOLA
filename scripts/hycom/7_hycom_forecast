@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Stop the script if any command fails
+set -e
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $hycom_init
+# ==========================================
+# CONFIGURATION
+# ==========================================
+OUT="$(pwd)"
+HOMEhwrf="${iola_repo_path}"
+FIX="${fix_path}"
+
+# ============================================
+# Base directories
+export PARM=$HOMEhwrf/parm/hycom
+export FIX=$FIX/hwrf-hycom
+export EXEC=$HOMEhwrf/sorc/hycom/exec
+export SRC=$HOMEhwrf/sorc/hycom/exec
+
+cp -rf "$PARM/hwrf_rtofs_hin40.basin.fcst.blkdat.input.standalone" "$OUT/blkdat.input"
+cp -rf "$PARM/hwrf_rtofs_hin40.basin.ports.input" "$OUT/ports.input"
+cp -rf "$PARM/hwrf_rtofs_hin40.basin.patch.input.90" "$OUT/patch.input"
+
+# Work in hycominit directory
+cd "$OUT"
+mkdir -p nest
+
+# HYCOM epoch
+HYCOM_EPOCH="1900-12-31 00:00:00"
+
+for bfile in hwrf_basin.*.b; do
+    echo "Processing $bfile"
+    hycomdate=$(sed -n '11p' "$bfile" | awk -F= '{print $2}' | awk '{print $2}')
+    if [[ -z "$hycomdate" ]]; then
+        echo "ERROR: Could not extract hycomdate from $bfile"
+        continue
+    fi
+    seconds=$(awk "BEGIN {printf \"%d\", $hycomdate * 86400}")
+    normaldate=$(date -u -d "$HYCOM_EPOCH $seconds seconds" "+%Y %j %H")
+    yyyy=$(echo "$normaldate" | awk '{print $1}')
+    jjj=$(echo "$normaldate"  | awk '{print $2}')
+    hh=$(echo "$normaldate"   | awk '{print $3}')
+    nestafile="nest/archv.${yyyy}_${jjj}_${hh}.a"
+    nestbfile="nest/archv.${yyyy}_${jjj}_${hh}.b"
+    afile="${bfile%.b}.a"
+
+    ln -sf "$OUT/$afile" "$nestafile"
+    ln -sf "$OUT/$bfile" "$nestbfile"
+done
+
+# link relax.rmu files
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.rmu.b nest/rmu.b
+
+# Create symbolic links to forcing and fix files
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.chl.a forcing.chl.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.chl.b forcing.chl.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.offlux.a forcing.offlux.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.offlux.b forcing.offlux.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.rivers.a forcing.rivers.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.rivers.b forcing.rivers.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.ssh.a relax.ssh.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.ssh.b relax.ssh.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf2.a veldf2.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf2.b veldf2.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf4.a veldf4.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf4.b veldf4.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.tbaric.a tbaric.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.tbaric.b tbaric.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.iso.sigma.a iso.sigma.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.iso.sigma.b iso.sigma.b
+
+# link executable
+
+ln -sf $EXEC/iola_hycom_forecast .
+
+$exec -n 90 ./iola_hycom_forecast
+

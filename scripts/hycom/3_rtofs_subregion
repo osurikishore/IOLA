@@ -1,0 +1,115 @@
+#!/bin/bash
+
+# Stop the script if any command fails
+set -e
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $hycom_init
+# ==========================================
+# CONFIGURATION
+# ==========================================
+CYCLE="${cycle}"  # Default example YYYYMMDD
+WORK_DIR="$(pwd)"
+EXEC="${exec}"
+FIX_PATH="${fix_path}" 
+EXEC_PATH="${iola_repo_path}/sorc/hycom/exec/hwrf_rtofs_subregion"
+
+# ==========================================
+# DATE CALCULATIONS
+# ==========================================
+YYYY=${CYCLE:0:4}
+MM=${CYCLE:4:2}
+DD=${CYCLE:6:2}
+HH=${CYCLE:8:2}
+
+# Calculate 24 hours prior using GNU date
+# We use the full timestamp to ensure accuracy across month/year boundaries
+PRIOR24=$(date -u -d "${YYYY}${MM}${DD} ${HH}:00 24 hours ago" +%Y%m%d)
+
+echo "Current Cycle: $CYCLE"
+echo "Prior 24h:     $PRIOR24"
+
+# ==========================================
+# SYMBOLIC LINKS setup
+# ==========================================
+echo "Setting up symbolic links..."
+
+export RUNmodIDin="rtofs_glo"
+export gridlabelin="navy_0.08"
+export RUNmodIDout="rtofs_hin40"
+export gridlabelout="basin"
+
+# Grid and Depth files
+for ext in a b; do
+    ln -sf "${FIX_PATH}/hwrf-hycom/${RUNmodIDin}.${gridlabelin}.regional.grid.${ext}"  "regional.grid.${ext}"
+    ln -sf "${FIX_PATH}/hwrf-hycom/${RUNmodIDin}.${gridlabelin}.regional.depth.${ext}" "regional.depth.${ext}"
+    ln -sf "${FIX_PATH}/hwrf-hycom/hwrf_${RUNmodIDout}.${gridlabelout}.regional.grid.${ext}"  "regional.subgrid.${ext}"
+    ln -sf "${FIX_PATH}/hwrf-hycom/hwrf_${RUNmodIDout}.${gridlabelout}.regional.depth.${ext}" "regional.subdepth.${ext}"
+done
+
+# Archive Files (RTOFS Inputs)
+# 00h - 18h (Prior Day)
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_000000_archv.a" archv_in.0.a
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_000000_archv.b" archv_in.0.b
+
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_060000_archv.a" archv_in.1.a
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_060000_archv.b" archv_in.1.b
+
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_120000_archv.a" archv_in.2.a
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_120000_archv.b" archv_in.2.b
+
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_180000_archv.a" archv_in.3.a
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_180000_archv.b" archv_in.3.b
+
+# 24h (Current Cycle 00Z)
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${YYYY}${MM}${DD}_000000_archv.a" archv_in.4.a
+ln -sf "${WORK_DIR}/RTOFSDIR/rtofs_${YYYY}${MM}${DD}_000000_archv.b" archv_in.4.b
+
+# ==========================================
+# PARAMETERS & EXECUTION
+# ==========================================
+# Common parameters
+IDM=712
+JDM=331
+IREFI=4113
+JREFI=1568
+IREFO=1
+JREFO=1
+ICEFLG=0
+
+# Hours corresponding to each archive
+HOURS=(000 006 012 018 024)
+
+echo "Starting execution loop..."
+
+for i in {0..4}; do
+  echo "Processing forecast hour: ${HOURS[$i]}"
+
+  # 1. Create the input parameter file
+  cat > subregion.${i}.in << EOF
+archv_in.${i}.b
+hwrf_basin.${HOURS[$i]}.b
+subregion None
+${IDM}         'idm   ' = longitudinal array size
+${JDM}         'jdm   ' = latitudinal  array size
+${IREFI}       'irefi ' = 1st index origin of subgrid or 0 if NOT aligned
+${JREFI}       'jrefi ' = 2nd index origin of subgrid
+${IREFO}       'irefo ' = longitude output reference location
+${JREFO}       'jrefo ' = latitude output reference location
+${ICEFLG}      'iceflg' = ice in output archive flag (0=none,1=energy loan model)
+EOF
+
+  # 2. Run the executable
+  # Assuming the executable reads from stdin (<) and writes to stdout (>)
+  # If ibrun is not needed for serial tasks, remove $EXEC
+  cat subregion.${i}.in | $EXEC_PATH > subregion.${i}.out
+
+done
+
+echo "hwrf_rtofs_subregion run completed successfully."

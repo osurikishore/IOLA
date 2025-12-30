@@ -1,0 +1,77 @@
+#!/bin/bash
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $hycom_init
+# ==========================================
+# CONFIGURATION
+# ==========================================
+CYCLE="${cycle}"  # Default example YYYYMMDD
+WORK_DIR="$(pwd)"
+RTOFS_ROOT="${input_data_path}/rtofs"
+EXEC_PATH="${iola_repo_path}/sorc/hycom/exec/hwrf_get_rtofs"
+PARM_TEMPLATE="${iola_repo_path}/parm/hycom/hwrf_get_rtofs.nml.in"
+EXEC="${exec}"
+
+# ==========================================
+
+# Extract Date Components
+YYYY=${CYCLE:0:4}
+MM=${CYCLE:4:2}
+DD=${CYCLE:6:2}
+HH=${CYCLE:8:2}
+
+PRIOR24=$(date -u -d "${YYYY}-${MM}-${DD} 00:00 24 hours ago" +%Y%m%d)
+
+mkdir RTOFSDIR
+cd RTOFSDIR 
+
+cp $PARM_TEMPLATE .
+
+INDIR1="${RTOFS_ROOT}/rtofs.${PRIOR24}"
+RTOFS_STAGE="$WORK_DIR/RTOFSDIR"
+YMD=$PRIOR24
+STARTHR=0
+ENDHR=0
+LAST_LEAD_TIME_TODAY=0
+
+sed \
+  -e "s|<u:INDIR1>|${INDIR1}|g" \
+  -e "s|<u:RTOFS_STAGE>|${RTOFS_STAGE}|g" \
+  -e "s|<s:YMD>|${YMD}|g" \
+  -e "s|<i:STARTHR>|${STARTHR}|g" \
+  -e "s|<i:ENDHR>|${ENDHR}|g" \
+  -e "s|<i:LAST_LEAD_TIME_TODAY>|${LAST_LEAD_TIME_TODAY}|g" \
+  hwrf_get_rtofs.nml.in > get_rtofs.nml
+
+$EXEC -n 1 $EXEC_PATH
+
+mv get_rtofs.nml get_rtofs.nml.restart
+
+INDIR1="${RTOFS_ROOT}/rtofs.${YYYY}${MM}${DD}"
+RTOFS_STAGE="$WORK_DIR/RTOFSDIR"
+YMD=${YYYY}${MM}${DD}
+STARTHR=-24
+ENDHR=0
+LAST_LEAD_TIME_TODAY=0
+
+sed \
+  -e "s|<u:INDIR1>|${INDIR1}|g" \
+  -e "s|<u:RTOFS_STAGE>|${RTOFS_STAGE}|g" \
+  -e "s|<s:YMD>|${YMD}|g" \
+  -e "s|<i:STARTHR>|${STARTHR}|g" \
+  -e "s|<i:ENDHR>|${ENDHR}|g" \
+  -e "s|<i:LAST_LEAD_TIME_TODAY>|${LAST_LEAD_TIME_TODAY}|g" \
+  hwrf_get_rtofs.nml.in > get_rtofs.nml
+
+$EXEC -n 1 $EXEC_PATH
+
+mv get_rtofs.nml get_rtofs.nml.0
+chmod u+w hwrf_get_rtofs.nml.in
+rm hwrf_get_rtofs.nml.in
+
+echo "RTOFS Staging Complete."

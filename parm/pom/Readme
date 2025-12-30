@@ -1,0 +1,14 @@
+To Run HWRF/MPIPOM over North Atlantic with Feature based GDEM initialization:
+   cp pom.conf_transatl_gdem pom.conf_transatl
+To Run HWRF/MPIPOM over North Atlantic with RTOFS based initialization:
+   cp pom.conf_transatl_rtof pom.conf_transatl
+
+To Run HWRF/MPIPOM over East Pacific with GDEM3 based initialization:
+   cp pom.conf_eastpac_gdem pom.conf_eastpac
+To Run HWRF/MPIPOM over North Atlantic with RTOFS based initialization:
+   cp pom.conf_eastpac_rtof pom.conf_eastpac
+
+These options in pom.conf_[basin] are now in the [pom] section of hwrf.conf and hwrf_[basin].conf.
+
+The coupled HWRF/MPIPOM can be run over other domains (westpac, northind, southind, swpac, sepac).
+However please note that URI has not well evaluated the coupled system over these domains.

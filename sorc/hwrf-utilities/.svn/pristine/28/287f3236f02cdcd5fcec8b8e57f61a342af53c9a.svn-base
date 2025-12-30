@@ -1,0 +1,69 @@
+&proc
+    lonres=0.03  ! output grid longitude resolution in degrees
+    latres=0.03  ! output grid latitude resolution in degrees
+    dommin=2 ! first WRF domain to read
+    dommax=3 ! last WRF domain to read
+    trackdom=3 ! WRF domain to track.  Must have used vortex_tracker=6 or 7
+    
+    ensmin=1 ! First ensemble member
+    ensmax=20 ! Last ensemble member
+    
+    stdev0=10e3 ! deterministic part of track error at analysis time
+    stdev120=120e3 ! deterministic part of track error at 120hr fcst
+    cendist=50e3 ! distance for track plot: P(storm within cendist meters)
+    maxdist=1110e3 ! maximum distance to consider for track plot
+    minprob=0.05 ! minimum probability to consider for track plot
+    
+    okdist0=30e3 ! mean rain swath max. member distance at time 0
+    okdist_per_hour=300 ! mean rain max. member dist increase per hour
+
+    ! Wind thresholds in m/s:
+    wind_thresholds=17.4,25.7,33.4 ! 34,50,65 kt in m/s rounded down
+    
+    ! Rain thresholds in meters.
+    ! These are all about 0.00001 meters less than the WPC thresholds
+    ! AND 1 meter just to detect extreme cases
+    rain_thresholds=0.05079,0.1059,0.15239,0.25399,0.38099,0.50799,1
+/
+
+&input
+    min_wrfdiag_sizes=368223740,1201183212 ! minimum sizes of wrfdiag files
+    min_input_age=30 ! min age (mtime) in seconds of input file
+
+    ! 09W CASE (NO SPREAD):
+    indiag_format='/lfs2/projects/hwrf-vd/Samuel.Trahan/ens-test-data/2014071512/09w/ens<ensid>.rammasun09w.2014071512.wrfdiag_d<domain>'
+    inatcf_format='/lfs2/projects/hwrf-vd/Samuel.Trahan/ens-test-data/2014071512/09w/ens<ensid>.rammasun09w.2014071512.trak.hwrf.atcfunix'
+
+    ! 08W CASE (tracks across japan):
+    !indiag_format='/lfs2/projects/hwrf-vd/Samuel.Trahan/ens-test-data/2014070812/08w/ens<ensid>.neoguri08w.2014070812.wrfdiag_d<domain>'
+    !inatcf_format='/lfs2/projects/hwrf-vd/Samuel.Trahan/ens-test-data/2014070812/08w/ens<ensid>.neoguri08w.2014070812.trak.hwrf.atcfunix'
+
+    ! 03E CASE (huge spread):
+    !indiag_format='/lfs2/projects/hwrf-vd/Samuel.Trahan/ens-test-data/2014061300/03e/ens<ensid>.cristina03e.2014061300.wrfdiag_d<domain>'
+    !inatcf_format='/lfs2/projects/hwrf-vd/Samuel.Trahan/ens-test-data/2014061300/03e/ens<ensid>.cristina03e.2014061300.trak.hwrf.atcfunix'
+/
+
+&output
+    ! Output times in hours since analysis time:
+    !output_times = 72, 78, 120, 126
+    output_times = 0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102, 108, 114, 120, 126
+    !output_times = 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126
+    tg_freq = 1. ! tornado genesis vars: output frequency
+
+    ! output portable greymap (PGM) image files for debugging
+    !pgmone_format  ='probens_m<ensid>_f<ifhr>.pgm' ! per member prob.
+    pgmany_format  ='probability_f<ifhr>.pgm' ! track probability
+    !windpgm_format ='windens_m<ensid>_f<ifhr>.pgm' ! per member wind prob.
+    !windprob_format='windprob_<thresh>mps_f<ifhr>.pgm' ! wind probability
+    !rainpgm_format ='rainens_m<ensid>_f<ifhr>.pgm' ! per member rain prob.
+    !rainprob_format='rainprob_<thresh>cm_f<ifhr>.pgm' ! rain probability
+    rainswath_format='rainswath_f<ifhr>.pgm' ! mean rain swath
+    !accumpgm_format='rainaccum_f<ifhr>.pgm' ! rain accumulator array for mean
+
+    ! Text output of the path averaged probability of each member:
+    ensprob_file='ens_prob.lst'
+
+    ! GrADS data and control files per forecast hour:
+    grads_data_file='hwrf_ens_prob_f<ifhr>.dat'
+    grads_ctl_file='hwrf_ens_prob_f<ifhr>.ctl'
+/

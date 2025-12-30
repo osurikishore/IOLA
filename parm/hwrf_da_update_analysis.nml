@@ -1,0 +1,52 @@
+&share
+debug         = F
+datapath      = <s:DATAPATH>
+is_da         = <b:IS_DA>
+is_ghst       = <b:IS_GHST>
+is_hwrf       = T
+is_merge      = <b:IS_MERGE>
+is_nest       = <b:IS_NEST>
+is_nest_cycle = F
+/
+
+&hwrf
+hwrf_an_filename      = <s:HWRF_AN_FILENAME>
+hwrf_fg_filename      = <s:HWRF_FG_FILENAME>
+hwrf_grid_json_vtable = <s:HWRF_GRID_JSON_VTABLE>
+hwrf_nest_filename    = <s:HWRF_NEST_FILENAME>
+hwrf_parent_filename  = <s:HWRF_PARENT_FILENAME>
+hwrf_var_json_vtable  = <s:HWRF_VAR_JSON_VTABLE>
+/
+
+&incremnt
+ic_blend_opt = <i:IC_BLEND_OPT>
+is_wnblnd    = T
+/
+
+&interp
+is_llp         = <b:IS_LLP>
+is_slint       = T
+/
+
+&remap
+npts_blend         = <i:NPTS_BLEND>
+npts_relax         = <i:NPTS_RELAX>
+region_blend_ratio = <f:REGION_BLEND_RATIO>
+/
+
+&tc
+is_blend_env          = <b:IS_BLEND_ENV>
+tcv_filename          = <s:TCV_FILENAME>
+tc_ic_radius          = <f:TC_IC_RADIUS>
+tc_env_radius         = <f:TC_ENV_RADIUS>
+tc_large_scale_radius = <f:TC_LARGE_SCALE_RADIUS>
+tc_nest_ratio_blend   = <f:TC_NEST_RATIO_BLEND>
+/
+
+&wndcmp
+wndcmp_area    = <f:WNDCMP_AREA>
+wndcmp_darea   = <f:WNDCMP_DAREA>
+wndcmp_dradius = <f:WNDCMP_DRADIUS>
+wndcmp_dangle  = <f:WNDCMP_DANGLE>
+wndcmp_mxwvn   = <i:WNDCMP_MXWVN>
+/

@@ -1,0 +1,14 @@
+ &setup
+   intrp_from_file=<s:INTRP_FROM_FILENAME>,
+   intrp_to_file=<s:INTRP_TO_FILENAME>,
+   e2a=T,
+   n3d=4,
+   n2d=1,
+   var3d(1)='T',var3d(2)='Q',var3d(3)='U',var3d(4)='V',
+   var2d(1)='PD', 
+   iblend=<i:IBLEND>,
+   nord_blend=4,
+   nmix=10,
+   radmax=7.0,
+   bwdth=0.3,
+ /

@@ -1,0 +1,132 @@
+#!/bin/bash
+
+# Stop if any command fails
+set -e
+
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+cd $hycom_init
+# ==========================================
+# CONFIGURATION
+# ==========================================
+CYCLE="${cycle}"
+WORK_DIR="$(pwd)"
+EXEC_PATH="${iola_repo_path}/sorc/hycom/exec/./hwrf_rtofs_restart2restart"
+FIX="${fix_path}"
+
+# ==========================================
+# 1. DATE CALCULATIONS
+# ==========================================
+YYYY=${CYCLE:0:4}
+MM=${CYCLE:4:2}
+DD=${CYCLE:6:2}
+HH=${CYCLE:8:2}
+
+PRIOR24=$(date -u -d "${YYYY}${MM}${DD} ${HH}:00 24 hours ago" +%Y%m%d)
+
+echo "Cycle: $CYCLE"
+echo "Prior 24h Date: $PRIOR24"
+
+# ==========================================
+# 2. LOAD DIMENSIONS & SETTINGS
+# ==========================================
+SETTINGS_FILE="hycom_settings"
+GLOBAL_GRID_FILE="regional.grid.b"
+
+if [ ! -f "$SETTINGS_FILE" ] || [ ! -f "$GLOBAL_GRID_FILE" ]; then
+    echo "ERROR: Missing configuration files."
+    exit 1
+fi
+
+source "$SETTINGS_FILE"
+
+IDM_GLOBAL=$(awk 'NR==1 {print $1}' "$GLOBAL_GRID_FILE")
+JDM_GLOBAL=$(awk 'NR==2 {print $1}' "$GLOBAL_GRID_FILE")
+
+echo "Dimensions: Global ${IDM_GLOBAL}x${JDM_GLOBAL} -> Local ${idm}x${jdm}"
+
+# ==========================================
+# 3. DEFINE FILES
+# ==========================================
+INPUT_RESTART="${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_000000_restart.a"
+# IMPORTANT: Define the input global .b file for the merge step
+INPUT_RESTART_B="${WORK_DIR}/RTOFSDIR/rtofs_${PRIOR24}_000000_restart.b"
+
+OUTPUT_RESTART="restart.${CYCLE}.basin.a"
+OUTPUT_B_ONE="restart.${CYCLE}.basin.b.one"
+OUTPUT_FINAL_B="restart_pre.b"
+
+# ==========================================
+# 4. EXECUTION: RESTART CONVERSION
+# ==========================================
+echo "Running restart conversion..."
+
+# Note: We must create the .a file first
+${EXEC_PATH} \
+    "${INPUT_RESTART}" \
+    ${IDM_GLOBAL} ${JDM_GLOBAL} \
+    ${ic} ${jc} ${idm} ${jdm} \
+    "${OUTPUT_RESTART}" > "${OUTPUT_B_ONE}"
+
+echo "Conversion complete. Created ${OUTPUT_RESTART} and ${OUTPUT_B_ONE}"
+
+# ==========================================
+# 5. EXECUTION: MERGE .b FILE HEADERS
+# ==========================================
+echo "Merging global headers with regional min/max to create ${OUTPUT_FINAL_B}..."
+
+awk -v region_file="${OUTPUT_B_ONE}" '
+    # 1. Pass through the first two lines of the Global .b file (Headers)
+    NR <= 2 { print; next }
+
+    {
+        # 2. Read the corresponding line from the regional .b.one file
+        if ((getline rline < region_file) <= 0) exit
+
+        # 3. Check for valid line length (Python: len(gline)<38 check)
+        if (length($0) < 38) exit
+
+        # 4. Parse min/max from regional line (Python: replace "min, max =" then split)
+        gsub("min, max =", " ", rline)
+        split(rline, nums) 
+        
+        # Ensure we have at least 2 numbers (Python: len(splat)<2 check)
+        if (length(nums) < 2) exit
+
+        # 5. Format and Write (Python: gline[0:38] + %16.7E%16.7E)
+        # substr($0, 1, 38) gets the first 38 chars of the global line
+        # nums[1] and nums[2] are the floats from the regional file
+        printf "%s %16.7E%16.7E\n", substr($0, 1, 38), nums[1], nums[2]
+    }
+' "${INPUT_RESTART_B}" > "${OUTPUT_FINAL_B}"
+
+echo "Success: Created ${OUTPUT_FINAL_B}"
+
+cp $OUTPUT_RESTART restart_forspin.a
+mv $OUTPUT_FINAL_B restart_forspin.b
+
+ln -sf restart_forspin.a restart_in.a
+ln -sf restart_forspin.b restart_in.b
+
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.regional.grid.a  regional.grid.a
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.regional.grid.b  regional.grid.b
+
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.regional.depth.a regional.depth.a
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.regional.depth.b regional.depth.b
+
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.regional.depth.a regional.mask.a
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.regional.depth.b regional.mask.b
+
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.relax.rmu.a relax.rmu.a
+ln -sf $FIX/hwrf-hycom/hwrf_rtofs_hin40.basin.relax.rmu.b relax.rmu.b
+
+cp -f $FIX/hwrf-hycom/ofs_atl.ismus_msk1760x880.dat  ismus_msk1760x880.dat
+cp -f $FIX/hwrf-hycom/ofs_atl.ismus_msk3072x1536.dat ismus_msk3072x1536.dat
+cp -f $FIX/hwrf-hycom/ofs_atl.ismus_msk1440x721.dat  ismus_msk1440x721.dat
+cp -f $FIX/hwrf-hycom/ofs_atl.ismus_msk1440x720.dat  ismus_msk1440x720.dat
+

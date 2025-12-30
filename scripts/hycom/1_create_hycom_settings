@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+
+#!/bin/bash
+# ==============================
+# IMPORT KEY VARIABLES
+# ==============================
+set -a
+source ../hwrf_run.config
+set +a
+
+mkdir -p $hycom_init
+cd $hycom_init
+
+# ==============================
+
+cat > hycom_settings << 'EOF'
+export idm=712
+export jdm=331
+export kdm=41
+export kkdm=41
+export ic=4113
+export jc=1568
+export ijgrid=1
+export gridlabelout=basin
+export gridlabelin=navy_0.08
+export RUNmodIDout=rtofs_hin40
+export RUNmodIDin=rtofs_glo
+export gridno=880
+EOF
+
+#create the proper file
