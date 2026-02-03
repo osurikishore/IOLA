@@ -2,6 +2,7 @@
 The Indian Ocean-Land-Atmosphere (IOLA) Coupled Mesoscale Prediction Framework for Inland Severe Weather and Coastal Hazards Forecasting
 
 The users are requested to cite the following first paper on IOLA model
+
 Sundararaman Gopalakrishnan, Krishna K. Osuri, et al. (2026): The Indian Ocean–Land–Atmosphere (IOLA)-Coupled Mesoscale Prediction Framework for Inland Severe Weather and Coastal Hazards Forecasting, Meteorological Applications, 33, e70116, https://doi.org/10.1002/met.70116
 
 
